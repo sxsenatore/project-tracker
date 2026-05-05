@@ -284,13 +284,15 @@ function createAccount() {
     });
 }
 
-function signOut() {
+async function signOut() {
   // Unsubscribe from Firestore listener before signing out
   if (unsubscribe) {
     unsubscribe();
     unsubscribe = null;
   }
-  auth.signOut();
+  // Small delay to ensure unsubscribe completes
+  await new Promise(resolve => setTimeout(resolve, 100));
+  await auth.signOut();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -310,6 +312,10 @@ function loadProjects() {
       });
       renderProjects(projects);
     }, err => {
+      // Ignore permission errors during sign-out (expected)
+      if (err.code === 'permission-denied' && !currentUser) {
+        return;
+      }
       console.error('Firestore error:', err);
       alert('Database error: ' + err.message);
     });
