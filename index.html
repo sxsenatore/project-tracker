@@ -71,9 +71,28 @@ header span{color:var(--accent);}
     </div>
     
     <div id="auth-signin" style="display:none;">
-      <button class="btn" onclick="signInWithGoogle()" style="width:100%;padding:12px;font-size:11pt;">
-        Sign in with Google
-      </button>
+      <div id="signin-form">
+        <input type="email" id="auth-email" placeholder="Work email" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
+        <input type="password" id="auth-password" placeholder="Password" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:10pt;font-family:inherit;" />
+        <button class="btn" onclick="signInWithEmail()" style="width:100%;padding:12px;font-size:11pt;margin-bottom:12px;">
+          Sign In
+        </button>
+        <div style="text-align:center;font-size:9pt;color:var(--muted);">
+          Don't have an account? <a href="#" onclick="showSignUp();return false;" style="color:var(--accent);font-weight:600;">Create one</a>
+        </div>
+      </div>
+      
+      <div id="signup-form" style="display:none;">
+        <input type="text" id="signup-name" placeholder="Your name" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
+        <input type="email" id="signup-email" placeholder="Work email" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
+        <input type="password" id="signup-password" placeholder="Password (min 6 characters)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:10pt;font-family:inherit;" />
+        <button class="btn" onclick="createAccount()" style="width:100%;padding:12px;font-size:11pt;margin-bottom:12px;">
+          Create Account
+        </button>
+        <div style="text-align:center;font-size:9pt;color:var(--muted);">
+          Already have an account? <a href="#" onclick="showSignIn();return false;" style="color:var(--accent);font-weight:600;">Sign in</a>
+        </div>
+      </div>
     </div>
     
     <div id="auth-error" class="config-box" style="display:none;">
@@ -184,8 +203,8 @@ if (isConfigured) {
       document.getElementById('auth-loading').style.display = 'none';
       if (user) {
         currentUser = user;
-        document.getElementById('user-name').textContent = user.displayName;
-        document.getElementById('user-photo').src = user.photoURL;
+        document.getElementById('user-name').textContent = user.displayName || user.email;
+        document.getElementById('user-photo').src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M4 20c0-4 3-6 8-6s8 2 8 6"/></svg>';
         document.getElementById('splash').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         loadProjects();
@@ -204,11 +223,59 @@ if (isConfigured) {
 // AUTHENTICATION
 // ═══════════════════════════════════════════════════════════════════════════
 
-function signInWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(err => {
-    alert('Sign-in error: ' + err.message);
-  });
+function showSignUp() {
+  document.getElementById('signin-form').style.display = 'none';
+  document.getElementById('signup-form').style.display = 'block';
+}
+
+function showSignIn() {
+  document.getElementById('signup-form').style.display = 'none';
+  document.getElementById('signin-form').style.display = 'block';
+}
+
+function signInWithEmail() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  
+  if (!email || !password) {
+    alert('Please enter email and password');
+    return;
+  }
+  
+  auth.signInWithEmailAndPassword(email, password)
+    .catch(err => {
+      alert('Sign-in error: ' + err.message);
+    });
+}
+
+function createAccount() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  
+  if (!name) {
+    alert('Please enter your name');
+    return;
+  }
+  if (!email) {
+    alert('Please enter your email');
+    return;
+  }
+  if (!password || password.length < 6) {
+    alert('Password must be at least 6 characters');
+    return;
+  }
+  
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(result => {
+      // Update user profile with name
+      return result.user.updateProfile({
+        displayName: name
+      });
+    })
+    .catch(err => {
+      alert('Account creation error: ' + err.message);
+    });
 }
 
 function signOut() {
@@ -274,7 +341,7 @@ function addProject() {
     name,
     service,
     status,
-    createdBy: currentUser.displayName,
+    createdBy: currentUser.displayName || currentUser.email,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => {
     document.getElementById('new-name').value = '';
