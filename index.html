@@ -209,7 +209,13 @@ if (isConfigured) {
         document.getElementById('app').style.display = 'block';
         loadProjects();
       } else {
+        // User signed out
+        currentUser = null;
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('splash').style.display = 'flex';
         document.getElementById('auth-signin').style.display = 'block';
+        document.getElementById('signin-form').style.display = 'block';
+        document.getElementById('signup-form').style.display = 'none';
       }
     });
   } catch (err) {
@@ -279,6 +285,11 @@ function createAccount() {
 }
 
 function signOut() {
+  // Unsubscribe from Firestore listener before signing out
+  if (unsubscribe) {
+    unsubscribe();
+    unsubscribe = null;
+  }
   auth.signOut();
 }
 
