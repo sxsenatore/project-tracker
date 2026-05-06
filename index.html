@@ -90,6 +90,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .tag-diff{background:#F3E8FF;color:#6B21A8;}
 .tag-year{background:#E5E7EB;color:#374151;}
 .tag-stake{background:#FED7AA;color:#9A3412;}
+.tag-pending{background:#FEF3C7;color:#92400E;}
+.tag-active{background:#D1FAE5;color:#065F46;}
+.tag-completed{background:#DBEAFE;color:#1E40AF;}
 .card-sub{font-size:7.5pt;color:#6B7280;margin-top:8px;}
 .upd-dot{display:inline-block;width:6px;height:6px;background:#10B981;border-radius:50%;margin-left:4px;}
 
@@ -348,13 +351,12 @@ tr:hover{background:#F9FAFB;}
         <div class="frow">
           <div class="ff">
             <label>Project Name *</label>
-            <select id="u-proj-select">
-              <option value="">— Select Project —</option>
-            </select>
+            <input type="text" id="u-proj-input" list="u-proj-list" placeholder="Type to search projects..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:var(--input);color:var(--text);"/>
+            <datalist id="u-proj-list"></datalist>
           </div>
           <div class="ff">
             <label>Date *</label>
-            <input type="date" id="u-date" value="${today()}"/>
+            <input type="date" id="u-date"/>
           </div>
         </div>
         <div class="frow">
@@ -450,7 +452,7 @@ tr:hover{background:#F9FAFB;}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs, getDocsFromServer } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs, getDocsFromServer, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config
 const firebaseConfig = {
@@ -472,6 +474,7 @@ let projects = [];
 const BAR_COLORS = ['#4A90D9','#E8874A','#52B788','#A855F7','#EF4444','#F59E0B','#06B6D4','#84CC16'];
 let ganttDrag = null;
 let unsubscribe = null;
+let unsubscribeUpdates = null;
 let currentSvc = null;
 let currentView = 'table';
 let dragId = null;
@@ -569,6 +572,7 @@ async function signIn() {
 async function signOutUser() {
   try {
     if (unsubscribe) unsubscribe();
+    if (unsubscribeUpdates) unsubscribeUpdates();
     await fbSignOut(auth);
     document.getElementById('app-container').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
@@ -639,7 +643,7 @@ function showTab(tab) {
     document.getElementById('tab-' + tab).classList.add('active');
   }
   if (tab === 'board') renderBoard();
-  if (tab === 'updates') loadUpdates();
+  if (tab === 'updates') setupUpdatesListener();
 }
 
 function showSvcTab(svc) {
@@ -1044,14 +1048,6 @@ function openDetail(id) {
           <button class="sts-btn comp" id="dsb-comp" onclick="setDetailStatus('completed')">🔵 Completed</button>
         </div>
       </div>
-      <div class="tag-group">
-        <label>Priority</label>
-        <div class="pri-sel">
-          <button class="pri-badge High" onclick="updatePriorityBadge('High')">High</button>
-          <button class="pri-badge Medium" onclick="updatePriorityBadge('Medium')">Medium</button>
-          <button class="pri-badge Low" onclick="updatePriorityBadge('Low')">Low</button>
-        </div>
-      </div>
     </div>
     
     <div class="detail-tabs">
@@ -1311,8 +1307,14 @@ function setDetailStatus(s, dirty = true) {
 
 function updatePriorityBadge(pri, dirty = true) {
   if (dirty) markDirty();
-  document.querySelectorAll('.pri-badge').forEach(b => b.classList.remove('sel'));
-  document.querySelector(`.pri-badge.${pri}`).classList.add('sel');
+  
+  // Check if priority buttons exist (they may have been removed from the UI)
+  const priBadges = document.querySelectorAll('.pri-badge');
+  if (priBadges.length === 0) return;
+  
+  priBadges.forEach(b => b.classList.remove('sel'));
+  const targetBadge = document.querySelector(`.pri-badge.${pri}`);
+  if (targetBadge) targetBadge.classList.add('sel');
 }
 
 async function saveDetail() {
@@ -1943,20 +1945,20 @@ window.renderGanttChart = renderGanttChart;
 // ══════════════════════════════════════════════
 
 async function addUpdate() {
-  const projectId = document.getElementById('u-proj-select').value;
+  const projectNameInput = document.getElementById('u-proj-input').value.trim();
   const updateDate = document.getElementById('u-date').value;
   const updatedBy = document.getElementById('u-by').value.trim();
   const description = document.getElementById('u-desc').value.trim();
   
-  if (!projectId || !updateDate || !updatedBy || !description) {
+  if (!projectNameInput || !updateDate || !updatedBy || !description) {
     alert('Please fill in all required fields');
     return;
   }
   
-  // Find the project
-  const project = projects.find(p => p.id === projectId);
+  // Find the project by name
+  const project = projects.find(p => p.name === projectNameInput);
   if (!project) {
-    alert('Project not found.');
+    alert('Project not found. Please select a project from the list.');
     return;
   }
   
@@ -1977,7 +1979,8 @@ async function addUpdate() {
   // Add to Firestore updates collection - Firestore will generate the ID
   const docRef = await addDoc(collection(db, 'updates'), update);
   
-  // Add Firestore's generated ID to our local copy
+  // IMPORTANT: Add Firestore's generated ID to our local copy AFTER adding to Firestore
+  // The document in Firestore should NOT have an 'id' field - we only add it locally
   update.id = docRef.id;
   
   // Optimistic update - add to local array immediately
@@ -1985,51 +1988,90 @@ async function addUpdate() {
   window.allUpdates.unshift(update); // Add to beginning (most recent)
   console.log('Added to local array with Firestore ID:', update.id, 'new count:', window.allUpdates.length);
   
-  // Clear form
-  document.getElementById('u-proj-select').value = '';
+  // Clear form and reset to today's date
+  document.getElementById('u-proj-input').value = '';
   document.getElementById('u-date').value = today();
   document.getElementById('u-by').value = '';
   document.getElementById('u-desc').value = '';
   
   // Show saved message
   const savedMsg = document.getElementById('upd-saved');
-  savedMsg.style.display = 'inline';
-  setTimeout(() => savedMsg.style.display = 'none', 2000);
+  if (savedMsg) {
+    savedMsg.style.display = 'inline';
+    setTimeout(() => savedMsg.style.display = 'none', 2000);
+  }
   
   // Re-render with new update
   renderUpdates();
-}
-
-async function loadUpdates() {
-  try {
-    const q = query(collection(db, 'updates'), orderBy('date', 'desc'));
-    // Use getDocsFromServer to bypass cache and get fresh data
-    const updatesSnapshot = await getDocsFromServer(q);
-    const updates = [];
-    updatesSnapshot.forEach(doc => {
-      updates.push({ id: doc.id, ...doc.data() });
-    });
-    
-    console.log('Updates loaded from Firestore (fresh from server):', updates.length);
-    window.allUpdates = updates;
-    renderUpdates();
-    populateProjectList();
-  } catch (error) {
-    console.error('Error loading updates:', error);
+  
+  // Also refresh project updates if we're viewing a project
+  if (currentProjId && typeof renderProjectUpdates === 'function') {
+    renderProjectUpdates();
   }
 }
 
-function populateProjectList() {
-  const select = document.getElementById('u-proj-select');
-  if (!select) return;
+function setupUpdatesListener() {
+  console.log('=== SETTING UP REAL-TIME UPDATES LISTENER ===');
   
-  // Keep the first "Select Project" option, add all projects
+  // Clean up existing listener if any
+  if (unsubscribeUpdates) {
+    unsubscribeUpdates();
+  }
+  
+  const q = query(collection(db, 'updates'), orderBy('date', 'desc'));
+  
+  // Set up real-time listener
+  unsubscribeUpdates = onSnapshot(q, (snapshot) => {
+    const updates = [];
+    
+    console.log('=== UPDATES CHANGED - SYNCING ===');
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      // CRITICAL FIX: Don't let the document data overwrite the real Firestore ID
+      // Remove any 'id' field from the data to prevent conflicts
+      delete data.id;
+      
+      const updateData = { id: doc.id, ...data };
+      updates.push(updateData);
+      
+      // Log each update's ID to see what we're getting
+      const isFirestoreId = /^[a-zA-Z0-9]{20}$/.test(doc.id);
+      console.log(`Loaded: ${doc.id} | Valid Firestore ID: ${isFirestoreId} | Project: ${updateData.projectName}`);
+    });
+    
+    console.log('Real-time updates synced:', updates.length);
+    console.log('=== END SYNC ===');
+    
+    window.allUpdates = updates;
+    renderUpdates();
+    populateProjectList();
+  }, (error) => {
+    console.error('Error in updates listener:', error);
+  });
+  
+  // Initialize form with today's date after setting up listener
+  initializeUpdateForm();
+}
+
+function populateProjectList() {
+  const datalist = document.getElementById('u-proj-list');
+  if (!datalist) return;
+  
+  // Populate datalist with project names sorted alphabetically
   const options = projects
+    .filter(p => !p.archived) // Only show non-archived projects
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    .map(p => `<option value="${p.id}">${esc(p.name)}</option>`)
+    .map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`)
     .join('');
   
-  select.innerHTML = '<option value="">— Select Project —</option>' + options;
+  datalist.innerHTML = options;
+}
+
+function initializeUpdateForm() {
+  // Set date to today
+  const dateInput = document.getElementById('u-date');
+  if (dateInput) dateInput.value = today();
 }
 
 function renderUpdates() {
@@ -2089,50 +2131,50 @@ async function deleteUpdate(id) {
   
   try {
     console.log('Attempting to delete update from Firestore...');
-    await deleteDoc(doc(db, 'updates', id));
-    console.log('✓ Delete successful in Firestore!');
     
-    // Verify the delete by trying to fetch the document
-    try {
-      const docRef = doc(db, 'updates', id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        console.error('⚠️ WARNING: Document still exists after delete! Permission issue?');
-        alert('Delete failed: You may not have permission to delete this update. Check Firestore security rules.');
-        return;
-      } else {
-        console.log('✓ Verified: Document no longer exists in Firestore');
+    // First verify the document exists
+    const docRef = doc(db, 'updates', id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error('Document does not exist in Firestore with ID:', id);
+      alert('Error: This update does not exist in the database. Removing from local view only.');
+      
+      // Remove from local array only
+      if (window.allUpdates) {
+        window.allUpdates = window.allUpdates.filter(u => u.id !== id);
+        renderUpdates();
+        
+        // Also update the project detail view if we're currently viewing a project
+        if (currentProjId && typeof renderProjectUpdates === 'function') {
+          renderProjectUpdates();
+        }
       }
-    } catch (verifyError) {
-      console.log('Document deleted successfully (verification threw expected error)');
+      return;
     }
     
-    // Remove from local array only after confirming Firestore delete
+    // Document exists, proceed with deletion
+    await deleteDoc(docRef);
+    console.log('Delete successful in Firestore - real-time listener will sync automatically');
+    
+    // Note: The real-time listener will automatically update the UI when Firestore confirms the deletion
+    // The optimistic updates below provide immediate feedback while we wait for sync
+    
+    // Optimistic update - remove from local array for immediate feedback
     if (window.allUpdates) {
       window.allUpdates = window.allUpdates.filter(u => u.id !== id);
-      console.log('✓ Removed from local array, new count:', window.allUpdates.length);
+      console.log('Optimistic removal from local array, new count:', window.allUpdates.length);
       renderUpdates();
+      
+      // Also update the project detail view if we're currently viewing a project
+      if (currentProjId && typeof renderProjectUpdates === 'function') {
+        renderProjectUpdates();
+      }
     }
     
-    console.log('✓ Delete operation completed successfully');
   } catch (error) {
-    console.error('❌ Error deleting update:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      name: error.name
-    });
-    
-    // Provide more helpful error messages
-    let userMessage = 'Error deleting update: ';
-    if (error.code === 'permission-denied') {
-      userMessage += 'Permission denied. You may not have access to delete this update. Check Firestore security rules.';
-    } else if (error.code === 'not-found') {
-      userMessage += 'Update not found. It may have already been deleted.';
-    } else {
-      userMessage += error.message;
-    }
-    alert(userMessage);
+    console.error('Error deleting update:', error);
+    alert('Error deleting update: ' + error.message);
   }
 }
 
@@ -2140,6 +2182,112 @@ async function deleteUpdate(id) {
 window.addUpdate = addUpdate;
 window.renderUpdates = renderUpdates;
 window.deleteUpdate = deleteUpdate;
+
+// Diagnostic function to check for ID mismatches
+window.checkUpdateIntegrity = async function() {
+  console.log('=== UPDATE INTEGRITY CHECK ===');
+  console.log('Local updates count:', window.allUpdates?.length || 0);
+  
+  if (!window.allUpdates || window.allUpdates.length === 0) {
+    console.log('No local updates to check');
+    return;
+  }
+  
+  // Check each update's ID format
+  console.log('\nChecking ID formats:');
+  const badIds = [];
+  for (const update of window.allUpdates) {
+    const isFirestoreId = /^[a-zA-Z0-9]{20}$/.test(update.id);
+    console.log(`ID: ${update.id} | Valid Firestore ID: ${isFirestoreId} | Project: ${update.projectName}`);
+    
+    if (!isFirestoreId) {
+      console.warn(`⚠️ Suspicious ID format: ${update.id}`);
+      badIds.push(update.id);
+    }
+  }
+  
+  console.log('=== CHECK COMPLETE ===');
+  if (badIds.length > 0) {
+    console.warn(`Found ${badIds.length} updates with non-standard IDs`);
+    console.log('Run deleteAllBadUpdates() to remove them from Firestore');
+  }
+  return badIds;
+};
+
+// Function to delete all updates with bad ID formats from Firestore
+window.deleteAllBadUpdates = async function() {
+  console.log('=== DELETING BAD UPDATES ===');
+  
+  const badIds = await window.checkUpdateIntegrity();
+  if (!badIds || badIds.length === 0) {
+    console.log('No bad updates found!');
+    return;
+  }
+  
+  if (!confirm(`This will delete ${badIds.length} updates with non-standard IDs from Firestore. Continue?`)) {
+    console.log('Cancelled');
+    return;
+  }
+  
+  let deleted = 0;
+  let failed = 0;
+  
+  for (const badId of badIds) {
+    try {
+      console.log(`Deleting: ${badId}`);
+      await deleteDoc(doc(db, 'updates', badId));
+      deleted++;
+      console.log(`✓ Deleted: ${badId}`);
+    } catch (error) {
+      failed++;
+      console.error(`✗ Failed to delete ${badId}:`, error);
+    }
+  }
+  
+  console.log(`=== CLEANUP COMPLETE ===`);
+  console.log(`Deleted: ${deleted}, Failed: ${failed}`);
+  console.log('Real-time listener will sync the updated data automatically');
+};
+
+// Function to remove the 'id' field from all update documents in Firestore
+window.cleanupStoredIds = async function() {
+  console.log('=== CLEANING UP STORED IDs ===');
+  console.log('This will remove any "id" fields stored inside Firestore documents');
+  console.log('(The Firestore document ID itself will remain unchanged)');
+  
+  if (!confirm('Continue with cleanup?')) {
+    console.log('Cancelled');
+    return;
+  }
+  
+  const q = query(collection(db, 'updates'));
+  const snapshot = await getDocs(q);
+  
+  let cleaned = 0;
+  let skipped = 0;
+  
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    
+    if (data.id !== undefined) {
+      console.log(`Document ${docSnap.id} has stored id field: "${data.id}" - removing it`);
+      
+      // Remove the 'id' field from the document
+      await updateDoc(doc(db, 'updates', docSnap.id), {
+        id: deleteField()
+      });
+      
+      cleaned++;
+      console.log(`✓ Cleaned: ${docSnap.id}`);
+    } else {
+      skipped++;
+    }
+  }
+  
+  console.log(`=== CLEANUP COMPLETE ===`);
+  console.log(`Cleaned: ${cleaned}, Skipped (no stored id): ${skipped}`);
+  console.log('Real-time listener will sync the updated data automatically');
+};
 
 // ══════════════════════════════════════════════
 // PROJECT-SPECIFIC UPDATES
@@ -2183,10 +2331,14 @@ async function addProjectUpdate() {
   if (!window.allUpdates) window.allUpdates = [];
   window.allUpdates.unshift(update);
   
-  // Clear form
-  document.getElementById('pu-date').value = today();
-  document.getElementById('pu-by').value = '';
-  document.getElementById('pu-desc').value = '';
+  // Clear form and reset to today's date
+  const dateField = document.getElementById('pu-date');
+  const byField = document.getElementById('pu-by');
+  const descField = document.getElementById('pu-desc');
+  
+  if (dateField) dateField.value = today();
+  if (byField) byField.value = '';
+  if (descField) descField.value = '';
   
   // Re-render project updates
   renderProjectUpdates();
