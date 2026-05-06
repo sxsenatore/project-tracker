@@ -7,8 +7,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#FAFAFA;--panel:#fff;--text:#1F2937;--text-light:#6B7280;--accent:#3B82F6;
-  --border:#E5E7EB;--high:#EF4444;--medium:#F59E0B;--low:#10B981;
+  --bg:#E5E7EB;--panel:#1F2937;--text:#1F2937;--text-light:#6B7280;--accent:#3B82F6;
+  --border:#D1D5DB;--high:#EF4444;--medium:#F59E0B;--low:#10B981;
+  --input:#F9FAFB;--panel-text:#F9FAFB;
   --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 }
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10pt;line-height:1.5;overflow-x:hidden;}
@@ -28,17 +29,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 
 /* Main App */
 .app-container{display:none;}
-.top-bar{background:var(--panel);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
-.top-bar h1{font-size:13pt;font-weight:700;}
-.user-info{display:flex;align-items:center;gap:12px;font-size:9pt;color:var(--text-light);}
+.top-bar{background:#fff;border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.top-bar h1{font-size:13pt;font-weight:700;color:#1F2937;}
+.user-info{display:flex;align-items:center;gap:12px;font-size:9pt;color:#6B7280;}
 .user-info button{padding:6px 12px;background:#6B7280;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:8pt;}
 .user-info button:hover{background:#4B5563;}
 
 /* Navigation */
-.nav{background:var(--panel);border-bottom:2px solid var(--border);padding:0 20px;display:flex;gap:4px;}
-.nav button{background:none;border:none;border-bottom:3px solid transparent;padding:12px 20px;cursor:pointer;font-size:9.5pt;font-weight:600;color:var(--text-light);transition:all .2s;}
-.nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
-.nav button:hover{color:var(--text);}
+.nav{background:#fff;border-bottom:2px solid var(--border);padding:0 20px;display:flex;gap:4px;}
+.nav button{background:none;border:none;border-bottom:3px solid transparent;padding:12px 20px;cursor:pointer;font-size:9.5pt;font-weight:600;color:#6B7280;transition:all .2s;}
+.nav button.active{color:#3B82F6;border-bottom-color:#3B82F6;}
+.nav button:hover{color:#1F2937;}
 
 /* Panels */
 .panel{display:none;padding:20px;}
@@ -59,12 +60,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
 .search-wrap{position:relative;flex:1;min-width:200px;}
 .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:9pt;opacity:0.5;}
-.search-wrap input{width:100%;padding:8px 8px 8px 32px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);}
-.fsel{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:var(--panel);cursor:pointer;}
+.search-wrap input{width:100%;padding:8px 8px 8px 32px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:#fff;color:#1F2937;}
+.fsel{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:#fff;color:#1F2937;cursor:pointer;}
 
 /* Board */
 .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
-.col{background:var(--panel);border-radius:8px;padding:16px;min-height:400px;}
+.col{background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:16px;min-height:400px;}
 .col-hd{font-size:10pt;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .cc{background:var(--border);padding:2px 8px;border-radius:10px;font-size:8pt;}
 .col-cards{display:flex;flex-direction:column;gap:12px;}
@@ -72,14 +73,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .empty-col{text-align:center;color:var(--text-light);padding:40px 20px;font-size:9pt;}
 
 /* Cards */
-.card{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:6px;padding:12px;cursor:pointer;transition:all .2s;}
+.card{background:#fff;border:1px solid var(--border);border-left:4px solid var(--border);border-radius:6px;padding:12px;cursor:pointer;transition:all .2s;}
 .card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1);transform:translateY(-2px);}
 .card.ph{border-left-color:var(--high);}
 .card.pm{border-left-color:var(--medium);}
 .card.pl{border-left-color:var(--low);}
 .card.dragging{opacity:0.4;}
-.card-title{font-size:9.5pt;font-weight:700;margin-bottom:4px;line-height:1.3;}
-.card-desc{font-size:8.5pt;color:var(--text-light);margin-bottom:8px;line-height:1.4;}
+.card-title{font-size:9.5pt;font-weight:700;margin-bottom:4px;line-height:1.3;color:#1F2937;}
+.card-desc{font-size:8.5pt;color:#6B7280;margin-bottom:8px;line-height:1.4;}
 .card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
 .tag{font-size:7pt;padding:3px 8px;border-radius:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
 .tag-svc{background:#DBEAFE;color:#1E40AF;}
@@ -89,13 +90,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .tag-diff{background:#F3E8FF;color:#6B21A8;}
 .tag-year{background:#E5E7EB;color:#374151;}
 .tag-stake{background:#FED7AA;color:#9A3412;}
-.card-sub{font-size:7.5pt;color:var(--text-light);margin-top:8px;}
+.card-sub{font-size:7.5pt;color:#6B7280;margin-top:8px;}
 .upd-dot{display:inline-block;width:6px;height:6px;background:#10B981;border-radius:50%;margin-left:4px;}
 
 /* Detail Panel */
-.detail-header{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-.back-btn{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;}
-.back-btn:hover{background:var(--border);}
+.detail-header{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;background:#fff;padding:16px;border-radius:8px;border:1px solid var(--border);}
+.back-btn{padding:8px 16px;background:#4B5563;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text);}
+.back-btn:hover{background:#6B7280;}
 .detail-title{font-size:14pt;font-weight:700;flex:1;}
 .detail-svc-badge{background:#DBEAFE;color:#1E40AF;padding:6px 12px;border-radius:6px;font-size:8pt;font-weight:700;}
 .btn-sm{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;font-size:8pt;font-weight:600;}
@@ -107,11 +108,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .btn-d:hover{background:#DC2626;}
 
 /* Detail Tabs */
-.detail-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
-.dtab{padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
-.dtab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.dtab:hover{color:var(--text);}
-.detail-content{display:none;}
+.detail-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;background:#fff;padding:0 16px;}
+.dtab{padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:9pt;font-weight:600;color:#6B7280;}
+.dtab.active{color:#3B82F6;border-bottom-color:#3B82F6;}
+.dtab:hover{color:#1F2937;}
+.detail-content{display:none;padding:20px;background:#fff;border-radius:8px;}
 .detail-content.active{display:block;}
 
 /* Tags Row */
@@ -137,7 +138,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .frow.s1{display:block;}
 .ff{flex:1;}
 .ff label{display:block;font-size:8pt;font-weight:600;color:var(--text-light);margin-bottom:6px;}
-.ff input,.ff textarea,.ff select{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);}
+.ff input,.ff textarea,.ff select{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:var(--input);color:var(--text);}
 .ff textarea{resize:vertical;min-height:80px;}
 .tag-input{min-width:150px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:8pt;}
 .stake-tag{display:inline-flex;align-items:center;gap:4px;background:#FED7AA;border:1px solid #FDBA74;color:#9A3412;padding:4px 8px;border-radius:10px;font-size:8pt;font-weight:600;}
@@ -150,20 +151,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .submit-btn:hover{background:#2563EB;}
 
 /* Table */
-table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:8px;overflow:hidden;}
-th,td{text-align:left;padding:12px;border-bottom:1px solid var(--border);font-size:9pt;}
-th{background:#F9FAFB;font-weight:700;color:var(--text-light);font-size:8pt;text-transform:uppercase;letter-spacing:0.5px;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;}
+th,td{text-align:left;padding:12px;border-bottom:1px solid var(--border);font-size:9pt;color:#1F2937;}
+th{background:#F3F4F6;font-weight:700;color:#6B7280;font-size:8pt;text-transform:uppercase;letter-spacing:0.5px;}
 tr:hover{background:#F9FAFB;}
 
 /* Service Tabs */
 .service-nav{display:flex;gap:4px;margin-bottom:16px;}
-.stab{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px 6px 0 0;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
+.stab{padding:8px 16px;background:#fff;border:1px solid var(--border);border-radius:6px 6px 0 0;cursor:pointer;font-size:9pt;font-weight:600;color:#1F2937;}
 .stab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.stab:hover{background:var(--border);}
+.stab:hover{background:#F3F4F6;}
 
 /* View Toggle */
 .view-toggle{display:flex;gap:4px;margin-bottom:16px;}
-.vtbtn{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
+.vtbtn{padding:8px 16px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;color:#1F2937;}
 .vtbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
 /* Saved Flash */
@@ -417,6 +418,8 @@ window.addAssigneeTag = addAssigneeTag;
 window.removeAssigneeTag = removeAssigneeTag;
 window.updatePriorityBadge = updatePriorityBadge;
 window.showDetailTab = showDetailTab;
+window.addLogEntry = addLogEntry;
+window.deleteLogEntry = deleteLogEntry;
 
 // Auth functions
 function showCreateAccount() {
@@ -528,11 +531,13 @@ function esc(s) {
 
 // Navigation
 function showTab(tab) {
-  prevTab = tab;
+  if (tab !== 'detail') prevTab = tab;
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + tab).classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
+  if (document.getElementById('tab-' + tab)) {
+    document.getElementById('tab-' + tab).classList.add('active');
+  }
   if (tab === 'board') renderBoard();
 }
 
@@ -632,17 +637,23 @@ function populateAssigneeFilter() {
 
 // Rendering
 function renderBoard() {
+  console.log('renderBoard called, projects count:', projects.length);
   populateBoardAssigneeFilter();
   ['pending', 'active', 'completed'].forEach(s => {
     const list = boardFiltered().filter(p => p.status === s);
+    console.log(`Rendering ${s}: ${list.length} projects`);
     document.getElementById('cc-' + s).textContent = list.length;
     const c = document.getElementById('cards-' + s);
     if (!list.length) { c.innerHTML = '<div class="empty-col">No projects here</div>'; return; }
     c.innerHTML = list.map(p => cardHTML(p, true)).join('');
     c.querySelectorAll('.card').forEach(el => {
+      console.log('Adding click handler to card:', el.dataset.id);
       el.addEventListener('dragstart', e => { dragId = el.dataset.id; el.classList.add('dragging'); });
       el.addEventListener('dragend', e => el.classList.remove('dragging'));
-      el.addEventListener('click', () => openDetail(el.dataset.id));
+      el.addEventListener('click', () => {
+        console.log('Card clicked:', el.dataset.id);
+        openDetail(el.dataset.id);
+      });
     });
   });
   renderDashboard();
@@ -680,7 +691,7 @@ function renderSvc() {
         <th>Project</th><th>Description</th><th>Status</th><th>Priority</th><th>Difficulty</th>
         <th>Assignees</th><th>Due Date</th><th>Created</th>
       </tr></thead>
-      <tbody>${list.map(p => `<tr onclick="openDetail('${p.id}')" style="cursor:pointer;">
+      <tbody>${list.map(p => `<tr data-id="${p.id}" style="cursor:pointer;">
         <td><strong>${esc(p.name)}</strong></td>
         <td>${esc(p.description || '')}</td>
         <td>${p.status || 'pending'}</td>
@@ -691,6 +702,10 @@ function renderSvc() {
         <td>${p.createdAt || ''}</td>
       </tr>`).join('')}</tbody>
     </table>`;
+    // Add click handlers after rendering
+    content.querySelectorAll('tr[data-id]').forEach(row => {
+      row.addEventListener('click', () => openDetail(row.dataset.id));
+    });
   } else {
     const board = `<div class="board">
       <div class="col" ondragover="onDragOver(event,'pending','svc')" ondrop="onDrop(event,'pending','svc')" ondragleave="onDragLeave(event)">
@@ -828,6 +843,9 @@ async function submitProject() {
     literatureReview: '',
     stepsProcesses: '',
     limitations: '',
+    questions: [],
+    minutes: [],
+    notes: [],
     createdAt: today(),
     completedAt: null,
     lastUpdated: null,
@@ -859,25 +877,63 @@ async function submitProject() {
 
 // Detail view (simplified - just basic fields for now)
 function openDetail(id) {
+  console.log('openDetail called with id:', id);
   const p = projects.find(x => x.id === id);
-  if (!p) return;
+  console.log('Found project:', p);
+  if (!p) {
+    console.log('Project not found!');
+    return;
+  }
   
   currentProjId = id;
   detailDirty = false;
   assigneeTags = p.assignedTo || [];
   stakeTags = p.stakeholderTags || [];
-  setDetailStatus(p.status || 'pending', false);
   
   const formatDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   
   const detailHTML = `
     <div class="detail-header">
       <button class="back-btn" onclick="goBack()">← Back</button>
-      <input class="detail-title" id="d-title" value="${esc(p.name || 'Untitled')}" oninput="markDirty()" placeholder="Project name…"/>
       <span class="detail-svc-badge">${esc(p.service || '—')}</span>
       <button class="btn-sm" id="archive-btn" onclick="toggleArchive()" style="background:#6B7280;color:#fff;border:none;">📦 Archive</button>
       <button class="btn-p btn-sm" onclick="saveDetail()">Save All</button>
       <button class="btn-d" onclick="deleteCurrentProject()">Delete</button>
+    </div>
+    
+    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;">
+      <input class="detail-title" id="d-title" value="${esc(p.name || 'Untitled')}" oninput="markDirty()" placeholder="Project name…" style="background:transparent;border:none;border-bottom:2px solid transparent;outline:none;font-size:14pt;font-weight:700;width:100%;color:#1F2937;font-family:var(--font);padding:4px 0;border-radius:0;margin-bottom:12px;" onfocus="this.style.borderBottomColor='var(--accent)'" onblur="this.style.borderBottomColor='transparent'"/>
+      
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Year</label>
+          <input type="number" id="d-year" value="${p.year || new Date().getFullYear()}" oninput="markDirty();updateRibbon()" style="width:70px;padding:4px 6px;background:var(--input);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9pt;"/>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Difficulty</label>
+          <select id="ov-difficulty" onchange="markDirty();updateRibbon()" style="padding:4px 6px;background:var(--input);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9pt;">
+            <option value="">—</option>
+            <option ${p.difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
+            <option ${p.difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
+            <option ${p.difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
+          </select>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px;">
+          <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Assigned</label>
+          <div id="d-assigned-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--input);border:1px solid var(--border);border-radius:4px;padding:4px 6px;flex:1;">
+            <input type="text" class="tag-input" id="d-assigned-input" placeholder="Type name + Enter" style="background:transparent;border:none;color:var(--text);font-size:8pt;min-width:120px;flex:1;" onkeydown="addAssigneeTag(event)"/>
+          </div>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px;">
+          <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Tags</label>
+          <div id="d-stake-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--input);border:1px solid var(--border);border-radius:4px;padding:4px 6px;flex:1;">
+            <input type="text" class="tag-input" id="d-stake-input" placeholder="Type tag + Enter" style="background:transparent;border:none;color:var(--text);font-size:8pt;min-width:120px;flex:1;" onkeydown="addStakeTag(event)"/>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="tags-row">
@@ -900,11 +956,39 @@ function openDetail(id) {
     </div>
     
     <div class="detail-tabs">
-      <button class="dtab active" onclick="showDetailTab('overview')">Overview</button>
-      <button class="dtab" onclick="showDetailTab('outline')">Outline</button>
+      <button class="dtab active" onclick="showDetailTab('submission')">📋 Submission</button>
+      <button class="dtab" onclick="showDetailTab('overview')">📝 Overview</button>
+      <button class="dtab" onclick="showDetailTab('outline')">📄 Outline</button>
+      <button class="dtab" onclick="showDetailTab('gantt')">📊 Gantt</button>
+      <button class="dtab" onclick="showDetailTab('questions')">❓ Questions</button>
+      <button class="dtab" onclick="showDetailTab('minutes')">📝 Minutes</button>
+      <button class="dtab" onclick="showDetailTab('notes')">📌 Notes</button>
     </div>
     
-    <div class="detail-content active" id="dtab-overview">
+    <div class="detail-content active" id="dtab-submission">
+      <h3 style="margin-bottom:16px;font-size:11pt;">Submission Information</h3>
+      <div class="frow s1">
+        <div class="ff"><label>Description</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;min-height:60px;" id="si-desc">—</div></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Submitter</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-submitter">—</div></div>
+        <div class="ff"><label>Contact</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-contact">—</div></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Service Line</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-service">—</div></div>
+        <div class="ff"><label>Submission Date</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-date">—</div></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Submitted Priority</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-priority">—</div></div>
+        <div class="ff"><label>Due Date (Original)</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-due">—</div></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Year</label><div style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;" id="si-year">—</div></div>
+        <div class="ff"></div>
+      </div>
+    </div>
+    
+    <div class="detail-content" id="dtab-overview">
       <div class="frow">
         <div class="ff"><label>Task/Goal</label><textarea id="d-taskgoal" oninput="markDirty()">${esc(p.taskGoal || '')}</textarea></div>
       </div>
@@ -916,37 +1000,10 @@ function openDetail(id) {
       </div>
       <div class="frow">
         <div class="ff"><label>Start Date</label>
-          <input type="text" id="d-startdate" readonly style="background:#f5f5f5;cursor:not-allowed;" value="${formatDate(p.startDate) || 'Not started yet'}"/>
+          <input type="text" id="d-startdate" readonly style="background:#2D3748;cursor:not-allowed;" value="${formatDate(p.startDate) || 'Not started yet'}"/>
         </div>
         <div class="ff"><label>Completed Date</label>
-          <input type="text" id="d-completeddate" readonly style="background:#f5f5f5;cursor:not-allowed;" value="${formatDate(p.completedAt) || 'Not completed yet'}"/>
-        </div>
-      </div>
-      <div class="frow">
-        <div class="ff">
-          <label>Assigned To</label>
-          <div id="d-assigned-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-            <input type="text" class="tag-input" id="d-assigned-input" placeholder="Type name and press Enter" style="width:160px;" onkeydown="addAssigneeTag(event)"/>
-          </div>
-        </div>
-        <div class="ff">
-          <label>Stakeholder Tags</label>
-          <div id="d-stake-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-            <input type="text" class="tag-input" id="d-stake-input" placeholder="Type tag and press Enter" style="width:160px;" onkeydown="addStakeTag(event)"/>
-          </div>
-        </div>
-      </div>
-      <div class="frow">
-        <div class="ff"><label>Difficulty</label>
-          <select id="ov-difficulty" onchange="markDirty()">
-            <option value="">—</option>
-            <option ${p.difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
-            <option ${p.difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
-            <option ${p.difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
-          </select>
-        </div>
-        <div class="ff"><label>Year</label>
-          <input type="number" id="d-year" value="${p.year || new Date().getFullYear()}" oninput="markDirty()"/>
+          <input type="text" id="d-completeddate" readonly style="background:#2D3748;cursor:not-allowed;" value="${formatDate(p.completedAt) || 'Not completed yet'}"/>
         </div>
       </div>
     </div>
@@ -957,9 +1014,127 @@ function openDetail(id) {
       <div class="frow s1"><div class="ff"><label>Steps/Processes</label><textarea id="d-steps" rows="3" oninput="markDirty()">${esc(p.stepsProcesses || '')}</textarea></div></div>
       <div class="frow s1"><div class="ff"><label>Limitations</label><textarea id="d-limitations" rows="3" oninput="markDirty()">${esc(p.limitations || '')}</textarea></div></div>
     </div>
+    
+    <div class="detail-content" id="dtab-gantt">
+      <div style="margin-bottom:20px;">
+        <h3 style="font-size:11pt;font-weight:700;margin-bottom:16px;color:#1F2937;">Project Timeline</h3>
+        
+        <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:20px;">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;margin-bottom:24px;">
+            <div style="font-size:8pt;font-weight:600;color:#6B7280;">SUBMISSION</div>
+            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.submissionDate) || '—'}</div>
+            
+            <div style="font-size:8pt;font-weight:600;color:#6B7280;">START DATE</div>
+            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.startDate) || 'Not started'}</div>
+            
+            <div style="font-size:8pt;font-weight:600;color:#6B7280;">DUE DATE</div>
+            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.dueDate) || '—'}</div>
+            
+            <div style="font-size:8pt;font-weight:600;color:#6B7280;">COMPLETED</div>
+            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.completedAt) || 'Not completed'}</div>
+          </div>
+          
+          ${(() => {
+            const sub = p.submissionDate ? new Date(p.submissionDate) : null;
+            const start = p.startDate ? new Date(p.startDate) : null;
+            const due = p.dueDate ? new Date(p.dueDate) : null;
+            const comp = p.completedAt ? new Date(p.completedAt) : null;
+            
+            if (!sub && !start && !due && !comp) {
+              return '<p style="color:#6B7280;font-size:9pt;text-align:center;padding:20px;">No timeline data available</p>';
+            }
+            
+            // Find earliest and latest dates
+            const dates = [sub, start, due, comp].filter(d => d);
+            const earliest = new Date(Math.min(...dates));
+            const latest = comp || due || new Date();
+            const totalDays = Math.max(1, Math.ceil((latest - earliest) / (1000 * 60 * 60 * 24)));
+            
+            const getPosition = (date) => {
+              if (!date) return null;
+              const days = Math.ceil((date - earliest) / (1000 * 60 * 60 * 24));
+              return (days / totalDays) * 100;
+            };
+            
+            const subPos = getPosition(sub);
+            const startPos = getPosition(start);
+            const duePos = getPosition(due);
+            const compPos = getPosition(comp);
+            
+            return \`
+              <div style="margin-top:24px;">
+                <div style="position:relative;height:60px;background:#fff;border-radius:6px;border:1px solid var(--border);">
+                  \${subPos !== null ? \`<div style="position:absolute;left:\${subPos}%;top:0;bottom:0;width:2px;background:#3B82F6;" title="Submission"></div>\` : ''}
+                  \${startPos !== null ? \`<div style="position:absolute;left:\${startPos}%;top:0;bottom:0;width:2px;background:#10B981;" title="Start"></div>\` : ''}
+                  \${duePos !== null ? \`<div style="position:absolute;left:\${duePos}%;top:0;bottom:0;width:2px;background:#F59E0B;" title="Due"></div>\` : ''}
+                  \${compPos !== null ? \`<div style="position:absolute;left:\${compPos}%;top:0;bottom:0;width:2px;background:#8B5CF6;" title="Completed"></div>\` : ''}
+                  
+                  \${startPos !== null && (duePos !== null || compPos !== null) ? \`
+                    <div style="position:absolute;left:\${startPos}%;right:\${100 - (compPos || duePos)}%;top:20px;height:20px;background:\${compPos ? '#10B981' : '#F59E0B'};opacity:0.3;border-radius:4px;"></div>
+                  \` : ''}
+                </div>
+                
+                <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:8pt;color:#6B7280;">
+                  <span>${formatDate(earliest)}</span>
+                  <span>${formatDate(latest)}</span>
+                </div>
+                
+                <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
+                    <div style="width:12px;height:12px;background:#3B82F6;border-radius:2px;"></div>
+                    <span>Submission</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
+                    <div style="width:12px;height:12px;background:#10B981;border-radius:2px;"></div>
+                    <span>Start</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
+                    <div style="width:12px;height:12px;background:#F59E0B;border-radius:2px;"></div>
+                    <span>Due</span>
+                  </div>
+                  \${compPos !== null ? \`
+                    <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
+                      <div style="width:12px;height:12px;background:#8B5CF6;border-radius:2px;"></div>
+                      <span>Completed</span>
+                    </div>
+                  \` : ''}
+                </div>
+              </div>
+            \`;
+          })()}
+        </div>
+      </div>
+    </div>
+    
+    <div class="detail-content" id="dtab-questions">
+      <div style="margin-bottom:16px;">
+        <textarea id="question-input" placeholder="Type your question here..." style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);margin-bottom:8px;background:#fff;color:#1F2937;resize:vertical;"></textarea>
+        <button onclick="const text=document.getElementById('question-input').value; if(text.trim()){addLogEntry('questions',text); document.getElementById('question-input').value='';}" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Question</button>
+      </div>
+      <div id="questions-log"></div>
+    </div>
+    
+    <div class="detail-content" id="dtab-minutes">
+      <div style="margin-bottom:16px;">
+        <textarea id="minutes-input" placeholder="Type meeting minutes here..." style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);margin-bottom:8px;background:#fff;color:#1F2937;resize:vertical;"></textarea>
+        <button onclick="const text=document.getElementById('minutes-input').value; if(text.trim()){addLogEntry('minutes',text); document.getElementById('minutes-input').value='';}" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Minute</button>
+      </div>
+      <div id="minutes-log"></div>
+    </div>
+    
+    <div class="detail-content" id="dtab-notes">
+      <div style="margin-bottom:16px;">
+        <textarea id="notes-input" placeholder="Type notes here..." style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);margin-bottom:8px;background:#fff;color:#1F2937;resize:vertical;"></textarea>
+        <button onclick="const text=document.getElementById('notes-input').value; if(text.trim()){addLogEntry('notes',text); document.getElementById('notes-input').value='';}" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Note</button>
+      </div>
+      <div id="notes-log"></div>
+    </div>
   `;
   
   document.getElementById('detail-content-wrapper').innerHTML = detailHTML;
+  
+  // Set status after elements exist
+  setDetailStatus(p.status || 'pending', false);
   
   // Update priority badges
   updatePriorityBadge(p.priority || 'Medium', false);
@@ -978,7 +1153,29 @@ function openDetail(id) {
   renderAssigneeTags(assigneeTags);
   renderStakeTags(stakeTags);
   
+  // Populate submission info
+  document.getElementById('si-submitter').textContent = p.submitter || '—';
+  document.getElementById('si-contact').textContent = p.submitterContact || '—';
+  document.getElementById('si-service').textContent = p.service || '—';
+  document.getElementById('si-date').textContent = p.createdAt || '—';
+  document.getElementById('si-priority').textContent = p.submissionPriority || p.priority || '—';
+  document.getElementById('si-due').textContent = p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+  document.getElementById('si-year').textContent = p.year || '—';
+  document.getElementById('si-desc').textContent = p.description || '—';
+  
+  // Render log entries
+  renderLogEntries('questions', p.questions || []);
+  renderLogEntries('minutes', p.minutes || []);
+  renderLogEntries('notes', p.notes || []);
+  
+  // Update ribbon
+  updateRibbon();
+  
   showTab('detail');
+}
+
+function updateRibbon() {
+  // Ribbon is now interactive with live inputs, no need to update display
 }
 
 function showDetailTab(tab) {
@@ -1054,14 +1251,28 @@ async function toggleArchive() {
   const p = projects.find(x => x.id === currentProjId);
   if (!p) return;
   
+  const newArchivedState = !p.archived;
+  
   await updateDoc(doc(db, 'projects', currentProjId), {
-    archived: !p.archived,
+    archived: newArchivedState,
     lastModifiedBy: {
       uid: currentUser.uid,
       email: currentUser.email,
       displayName: currentUser.displayName || currentUser.email
     }
   });
+  
+  // Update button immediately
+  const archiveBtn = document.getElementById('archive-btn');
+  if (archiveBtn) {
+    if (newArchivedState) {
+      archiveBtn.textContent = '📦 Unarchive';
+      archiveBtn.style.background = '#10B981';
+    } else {
+      archiveBtn.textContent = '📦 Archive';
+      archiveBtn.style.background = '#6B7280';
+    }
+  }
 }
 
 async function deleteCurrentProject() {
@@ -1080,12 +1291,14 @@ function addStakeTag(e) {
   e.target.value = '';
   renderStakeTags(stakeTags);
   markDirty();
+  updateRibbon();
 }
 
 function removeStakeTag(i) {
   stakeTags.splice(i, 1);
   renderStakeTags(stakeTags);
   markDirty();
+  updateRibbon();
 }
 
 function renderStakeTags(tags) {
@@ -1109,12 +1322,14 @@ function addAssigneeTag(e) {
   e.target.value = '';
   renderAssigneeTags(assigneeTags);
   markDirty();
+  updateRibbon();
 }
 
 function removeAssigneeTag(i) {
   assigneeTags.splice(i, 1);
   renderAssigneeTags(assigneeTags);
   markDirty();
+  updateRibbon();
 }
 
 function renderAssigneeTags(tags) {
@@ -1139,6 +1354,81 @@ function showSavedFlash() {
   flash.textContent = '✓ Saved';
   document.body.appendChild(flash);
   setTimeout(() => flash.remove(), 2000);
+}
+
+// Log entry functions
+async function addLogEntry(type, text) {
+  if (!text || !text.trim()) return;
+  
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const entry = {
+    id: 'log_' + Date.now(),
+    text: text.trim(),
+    createdAt: today(),
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  const entries = p[type] || [];
+  entries.push(entry);
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    [type]: entries,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+  
+  renderLogEntries(type, entries);
+}
+
+async function deleteLogEntry(type, id) {
+  if (!confirm('Delete this entry?')) return;
+  
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const entries = (p[type] || []).filter(e => e.id !== id);
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    [type]: entries,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+  
+  renderLogEntries(type, entries);
+}
+
+function renderLogEntries(type, entries) {
+  const container = document.getElementById(type + '-log');
+  if (!container) return;
+  
+  if (!entries || entries.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-light);padding:20px;text-align:center;">No entries yet</p>';
+    return;
+  }
+  
+  container.innerHTML = entries.map(e => `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+        <div style="font-size:8pt;color:#6B7280;">
+          ${e.createdBy?.displayName || e.createdBy?.email || 'Unknown'} · ${e.createdAt || '—'}
+        </div>
+        <button onclick="deleteLogEntry('${type}', '${e.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
+      </div>
+      <div style="white-space:pre-wrap;color:#1F2937;">${esc(e.text)}</div>
+    </div>
+  `).join('');
 }
 
 </script>
