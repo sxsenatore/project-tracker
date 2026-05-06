@@ -450,7 +450,7 @@ tr:hover{background:#F9FAFB;}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs, getDocsFromServer } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config
 const firebaseConfig = {
@@ -795,9 +795,9 @@ function renderSvc() {
       <tbody>${list.map(p => `<tr data-id="${p.id}" style="cursor:pointer;">
         <td><strong>${esc(p.name)}</strong></td>
         <td>${esc(p.description || '')}</td>
-        <td>${p.status || 'pending'}</td>
-        <td>${p.priority || ''}</td>
-        <td>${p.difficulty || ''}</td>
+        <td><span class="tag tag-${(p.status || 'pending').toLowerCase()}">${p.status || 'pending'}</span></td>
+        <td><span class="tag tag-${(p.priority || 'medium').toLowerCase()}">${p.priority || '—'}</span></td>
+        <td><span class="tag tag-${(p.difficulty || 'medium').toLowerCase()}">${p.difficulty || '—'}</span></td>
         <td>${(p.assignedTo || []).map(a => `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-size:7pt;font-weight:600;">${esc(a)}</span>`).join(' ')}</td>
         <td>${p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</td>
         <td>${p.createdAt || ''}</td>
@@ -1062,6 +1062,7 @@ function openDetail(id) {
       <button class="dtab" onclick="showDetailTab('questions')">❓ Questions</button>
       <button class="dtab" onclick="showDetailTab('minutes')">📝 Minutes</button>
       <button class="dtab" onclick="showDetailTab('notes')">📌 Notes</button>
+      <button class="dtab" onclick="showDetailTab('updates')">🔄 Updates</button>
     </div>
     
     <div class="detail-content active" id="dtab-submission">
@@ -1182,6 +1183,28 @@ function openDetail(id) {
       </div>
       <div id="notes-log"></div>
     </div>
+    
+    <div class="detail-content" id="dtab-updates">
+      <h3 style="margin-bottom:16px;font-size:11pt;">Project Updates</h3>
+      <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;">
+        <div class="frow">
+          <div class="ff">
+            <label>Date *</label>
+            <input type="date" id="pu-date" value="${today()}"/>
+          </div>
+          <div class="ff">
+            <label>Updated By *</label>
+            <input type="text" id="pu-by" placeholder="Your name"/>
+          </div>
+        </div>
+        <div class="ff">
+          <label>What Changed *</label>
+          <textarea id="pu-desc" rows="2" placeholder="Describe the update…"></textarea>
+        </div>
+        <button onclick="addProjectUpdate()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Update</button>
+      </div>
+      <div id="project-updates-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
   `;
   
   document.getElementById('detail-content-wrapper').innerHTML = detailHTML;
@@ -1261,6 +1284,11 @@ function showDetailTab(tab) {
   document.querySelectorAll('.detail-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.dtab[onclick="showDetailTab('${tab}')"]`).classList.add('active');
   document.getElementById('dtab-' + tab).classList.add('active');
+  
+  // Load updates when updates tab is shown
+  if (tab === 'updates') {
+    renderProjectUpdates();
+  }
 }
 
 function goBack() {
@@ -1933,7 +1961,6 @@ async function addUpdate() {
   }
   
   const update = {
-    id: 'upd_' + Date.now(),
     projectId: project.id,
     projectName: project.name,
     service: project.service,
@@ -1947,8 +1974,16 @@ async function addUpdate() {
     }
   };
   
-  // Add to Firestore updates collection
-  await addDoc(collection(db, 'updates'), update);
+  // Add to Firestore updates collection - Firestore will generate the ID
+  const docRef = await addDoc(collection(db, 'updates'), update);
+  
+  // Add Firestore's generated ID to our local copy
+  update.id = docRef.id;
+  
+  // Optimistic update - add to local array immediately
+  if (!window.allUpdates) window.allUpdates = [];
+  window.allUpdates.unshift(update); // Add to beginning (most recent)
+  console.log('Added to local array with Firestore ID:', update.id, 'new count:', window.allUpdates.length);
   
   // Clear form
   document.getElementById('u-proj-select').value = '';
@@ -1961,23 +1996,27 @@ async function addUpdate() {
   savedMsg.style.display = 'inline';
   setTimeout(() => savedMsg.style.display = 'none', 2000);
   
-  // Refresh updates list
-  loadUpdates();
+  // Re-render with new update
+  renderUpdates();
 }
 
 async function loadUpdates() {
-  const updatesSnapshot = await getDocs(collection(db, 'updates'));
-  const updates = [];
-  updatesSnapshot.forEach(doc => {
-    updates.push({ id: doc.id, ...doc.data() });
-  });
-  
-  // Sort by date descending
-  updates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  
-  window.allUpdates = updates;
-  renderUpdates();
-  populateProjectList();
+  try {
+    const q = query(collection(db, 'updates'), orderBy('date', 'desc'));
+    // Use getDocsFromServer to bypass cache and get fresh data
+    const updatesSnapshot = await getDocsFromServer(q);
+    const updates = [];
+    updatesSnapshot.forEach(doc => {
+      updates.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log('Updates loaded from Firestore (fresh from server):', updates.length);
+    window.allUpdates = updates;
+    renderUpdates();
+    populateProjectList();
+  } catch (error) {
+    console.error('Error loading updates:', error);
+  }
 }
 
 function populateProjectList() {
@@ -1994,12 +2033,18 @@ function populateProjectList() {
 }
 
 function renderUpdates() {
+  console.log('renderUpdates called, allUpdates:', window.allUpdates);
   const tbody = document.getElementById('utbody');
   const noUpd = document.getElementById('no-upd');
-  if (!tbody) return;
+  console.log('tbody:', tbody, 'noUpd:', noUpd);
+  if (!tbody) {
+    console.log('tbody not found!');
+    return;
+  }
   
   // Safety check - if allUpdates doesn't exist yet, show empty state
   if (!window.allUpdates) {
+    console.log('allUpdates is empty/undefined');
     tbody.innerHTML = '';
     if (noUpd) noUpd.style.display = 'block';
     return;
@@ -2012,6 +2057,8 @@ function renderUpdates() {
            (u.service || '').toLowerCase().includes(filter) ||
            (u.updatedBy || '').toLowerCase().includes(filter);
   });
+  
+  console.log('Filtered updates:', updates.length, 'updates');
   
   if (updates.length === 0) {
     tbody.innerHTML = '';
@@ -2033,6 +2080,7 @@ function renderUpdates() {
       </td>
     </tr>
   `).join('');
+  console.log('Table updated with', updates.length, 'rows');
 }
 
 async function deleteUpdate(id) {
@@ -2042,11 +2090,49 @@ async function deleteUpdate(id) {
   try {
     console.log('Attempting to delete update from Firestore...');
     await deleteDoc(doc(db, 'updates', id));
-    console.log('Delete successful, reloading updates...');
-    await loadUpdates();
+    console.log('✓ Delete successful in Firestore!');
+    
+    // Verify the delete by trying to fetch the document
+    try {
+      const docRef = doc(db, 'updates', id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        console.error('⚠️ WARNING: Document still exists after delete! Permission issue?');
+        alert('Delete failed: You may not have permission to delete this update. Check Firestore security rules.');
+        return;
+      } else {
+        console.log('✓ Verified: Document no longer exists in Firestore');
+      }
+    } catch (verifyError) {
+      console.log('Document deleted successfully (verification threw expected error)');
+    }
+    
+    // Remove from local array only after confirming Firestore delete
+    if (window.allUpdates) {
+      window.allUpdates = window.allUpdates.filter(u => u.id !== id);
+      console.log('✓ Removed from local array, new count:', window.allUpdates.length);
+      renderUpdates();
+    }
+    
+    console.log('✓ Delete operation completed successfully');
   } catch (error) {
-    console.error('Error deleting update:', error);
-    alert('Error deleting update: ' + error.message);
+    console.error('❌ Error deleting update:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      name: error.name
+    });
+    
+    // Provide more helpful error messages
+    let userMessage = 'Error deleting update: ';
+    if (error.code === 'permission-denied') {
+      userMessage += 'Permission denied. You may not have access to delete this update. Check Firestore security rules.';
+    } else if (error.code === 'not-found') {
+      userMessage += 'Update not found. It may have already been deleted.';
+    } else {
+      userMessage += error.message;
+    }
+    alert(userMessage);
   }
 }
 
@@ -2054,6 +2140,86 @@ async function deleteUpdate(id) {
 window.addUpdate = addUpdate;
 window.renderUpdates = renderUpdates;
 window.deleteUpdate = deleteUpdate;
+
+// ══════════════════════════════════════════════
+// PROJECT-SPECIFIC UPDATES
+// ══════════════════════════════════════════════
+
+async function addProjectUpdate() {
+  const project = projects.find(p => p.id === currentProjId);
+  if (!project) {
+    alert('Project not found');
+    return;
+  }
+  
+  const updateDate = document.getElementById('pu-date').value;
+  const updatedBy = document.getElementById('pu-by').value.trim();
+  const description = document.getElementById('pu-desc').value.trim();
+  
+  if (!updateDate || !updatedBy || !description) {
+    alert('Please fill in all fields');
+    return;
+  }
+  
+  const update = {
+    projectId: project.id,
+    projectName: project.name,
+    service: project.service,
+    updatedBy: updatedBy,
+    description: description,
+    date: updateDate,
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  // Add to Firestore
+  const docRef = await addDoc(collection(db, 'updates'), update);
+  update.id = docRef.id;
+  
+  // Add to local array if it exists
+  if (!window.allUpdates) window.allUpdates = [];
+  window.allUpdates.unshift(update);
+  
+  // Clear form
+  document.getElementById('pu-date').value = today();
+  document.getElementById('pu-by').value = '';
+  document.getElementById('pu-desc').value = '';
+  
+  // Re-render project updates
+  renderProjectUpdates();
+}
+
+function renderProjectUpdates() {
+  const list = document.getElementById('project-updates-list');
+  if (!list || !currentProjId) return;
+  
+  // Filter updates for this project
+  const projectUpdates = (window.allUpdates || []).filter(u => u.projectId === currentProjId);
+  
+  if (projectUpdates.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:#6B7280;">No updates yet for this project.</div>';
+    return;
+  }
+  
+  list.innerHTML = projectUpdates.map(u => `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <span style="font-weight:600;font-size:9pt;color:#1F2937;">${u.date || '—'}</span>
+          <span style="font-size:9pt;color:#6B7280;">by ${esc(u.updatedBy || '')}</span>
+        </div>
+        <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
+      </div>
+      <div style="font-size:9pt;color:#1F2937;">${esc(u.description || '')}</div>
+    </div>
+  `).join('');
+}
+
+window.addProjectUpdate = addProjectUpdate;
+window.renderProjectUpdates = renderProjectUpdates;
 
 </script>
 </body>
