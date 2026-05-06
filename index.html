@@ -88,6 +88,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10
 .tag-medium{background:#FEF3C7;color:#92400E;}
 .tag-low{background:#D1FAE5;color:#065F46;}
 .tag-diff{background:#F3E8FF;color:#6B21A8;}
+.tag-easy{background:#D1FAE5;color:#065F46;}
+.tag-hard{background:#FEE2E2;color:#991B1B;}
 .tag-year{background:#E5E7EB;color:#374151;}
 .tag-stake{background:#FED7AA;color:#9A3412;}
 .tag-pending{background:#FEF3C7;color:#92400E;}
@@ -236,6 +238,16 @@ tr:hover{background:#F9FAFB;}
 <div id="app-container" class="app-container">
   <div class="top-bar">
     <h1>🎯 Project Tracker</h1>
+    <div style="flex:1;max-width:600px;margin:0 40px;position:relative;">
+      <div class="search-wrap" style="width:100%;">
+        <span class="si">🔍</span>
+        <input type="text" id="global-search" placeholder="Search all projects..." style="width:100%;" oninput="performGlobalSearch()" onkeydown="if(event.key==='Escape'){clearGlobalSearch()}" onfocus="performGlobalSearch()"/>
+      </div>
+      <!-- Search Results Dropdown -->
+      <div id="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:500px;overflow-y:auto;z-index:1000;margin-top:8px;">
+        <div id="search-results-list"></div>
+      </div>
+    </div>
     <div class="user-info">
       <span id="user-display">Loading...</span>
       <button onclick="signOut()">Sign Out</button>
@@ -244,6 +256,7 @@ tr:hover{background:#F9FAFB;}
 
   <div class="nav">
     <button id="tab-board" class="active" onclick="showTab('board')">Board</button>
+    <button id="tab-myprojects" onclick="showTab('myprojects')">My Projects</button>
     <button id="tab-service" onclick="showTab('service')">Services</button>
     <button id="tab-updates" onclick="showTab('updates')">Updates</button>
     <button id="tab-submit" onclick="showTab('submit')">+ New Project</button>
@@ -283,6 +296,7 @@ tr:hover{background:#F9FAFB;}
       <label style="display:flex;align-items:center;gap:4px;font-size:9pt;cursor:pointer;">
         <input type="checkbox" id="b-show-archived" onchange="renderBoard()" style="cursor:pointer;"/> Show Archived
       </label>
+      <button class="btn-p" onclick="exportProjects('board')" style="background:#10B981;padding:6px 12px;font-size:8pt;">📊 Export CSV</button>
     </div>
     <div class="board">
       <div class="col col-pend" ondragover="onDragOver(event,'pending')" ondrop="onDrop(event,'pending')" ondragleave="onDragLeave(event)">
@@ -297,6 +311,32 @@ tr:hover{background:#F9FAFB;}
         <div class="col-hd">🔵 Completed <span class="cc" id="cc-completed">0</span></div>
         <div class="col-cards" id="cards-completed"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- My Projects Panel -->
+  <div class="panel" id="panel-myprojects">
+    <div style="max-width:1400px;margin:0 auto;padding:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h2 style="font-size:14pt;font-weight:700;margin:0;">My Assigned Projects</h2>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div class="search-wrap"><span class="si">🔍</span><input type="text" id="my-search" placeholder="Search my projects…" oninput="renderMyProjects()"/></div>
+          <select class="fsel" id="my-status" onchange="renderMyProjects()">
+            <option value="">All Statuses</option>
+            <option>Pending</option>
+            <option>Active</option>
+            <option>Completed</option>
+          </select>
+          <select class="fsel" id="my-pri" onchange="renderMyProjects()">
+            <option value="">All Priorities</option>
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+          <button class="btn-p" onclick="exportProjects('myprojects')" style="background:#10B981;padding:6px 12px;font-size:8pt;">📊 Export CSV</button>
+        </div>
+      </div>
+      <div id="my-projects-container"></div>
     </div>
   </div>
 
@@ -332,6 +372,7 @@ tr:hover{background:#F9FAFB;}
         <option value="status-asc">Status</option>
         <option value="dueDate-asc">Due Date</option>
       </select>
+      <button class="btn-p" onclick="exportProjects('service')" style="background:#10B981;padding:6px 12px;font-size:8pt;">📊 Export CSV</button>
     </div>
     <div class="view-toggle">
       <button class="vtbtn" id="vt-board" onclick="setView('board')">⊞ Board</button>
@@ -452,7 +493,7 @@ tr:hover{background:#F9FAFB;}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs, getDocsFromServer, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs, getDocsFromServer, deleteField, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config
 const firebaseConfig = {
@@ -471,10 +512,12 @@ const db = getFirestore(app);
 // Global state
 let currentUser = null;
 let projects = [];
+let teamMembers = []; // Track all team members for assignments
 const BAR_COLORS = ['#4A90D9','#E8874A','#52B788','#A855F7','#EF4444','#F59E0B','#06B6D4','#84CC16'];
 let ganttDrag = null;
 let unsubscribe = null;
 let unsubscribeUpdates = null;
+let unsubscribeUsers = null;
 let currentSvc = null;
 let currentView = 'table';
 let dragId = null;
@@ -497,6 +540,15 @@ window.showSvcTab = showSvcTab;
 window.setView = setView;
 window.renderBoard = renderBoard;
 window.renderSvc = renderSvc;
+window.renderMyProjects = renderMyProjects;
+window.performGlobalSearch = performGlobalSearch;
+window.clearGlobalSearch = clearGlobalSearch;
+window.exportProjects = exportProjects;
+window.toggleReplyForm = toggleReplyForm;
+window.cancelReply = cancelReply;
+window.toggleReplies = toggleReplies;
+window.addReply = addReply;
+window.deleteReply = deleteReply;
 window.submitProject = submitProject;
 window.onDragOver = onDragOver;
 window.onDragLeave = onDragLeave;
@@ -512,6 +564,8 @@ window.addStakeTag = addStakeTag;
 window.removeStakeTag = removeStakeTag;
 window.addAssigneeTag = addAssigneeTag;
 window.removeAssigneeTag = removeAssigneeTag;
+window.addAssigneeFromDropdown = addAssigneeFromDropdown;
+window.populateAssigneeDropdown = populateAssigneeDropdown;
 window.updatePriorityBadge = updatePriorityBadge;
 window.showDetailTab = showDetailTab;
 window.addLogEntry = addLogEntry;
@@ -573,6 +627,7 @@ async function signOutUser() {
   try {
     if (unsubscribe) unsubscribe();
     if (unsubscribeUpdates) unsubscribeUpdates();
+    if (unsubscribeUsers) unsubscribeUsers();
     await fbSignOut(auth);
     document.getElementById('app-container').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
@@ -588,19 +643,77 @@ function showError(msg) {
 }
 
 // Auth state observer
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
     document.getElementById('user-display').textContent = user.displayName || user.email;
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app-container').style.display = 'block';
+    
+    // Set up project listener first (critical)
     setupFirestoreListener();
+    
+    // Track this user in Firestore for team member list (non-blocking)
+    trackUser(user).catch(err => console.error('User tracking failed:', err));
+    
+    // Set up team members listener (non-blocking)
+    try {
+      setupTeamMembersListener();
+    } catch (err) {
+      console.error('Team members listener failed:', err);
+    }
   } else {
     currentUser = null;
     if (unsubscribe) unsubscribe();
+    if (unsubscribeUsers) unsubscribeUsers();
     projects = [];
+    teamMembers = [];
   }
 });
+
+// Track user in Firestore for team assignments
+async function trackUser(user) {
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName || user.email,
+      lastActive: serverTimestamp()
+    }, { merge: true }); // merge: true creates or updates
+  } catch (error) {
+    console.error('Error tracking user:', error);
+  }
+}
+
+// Listen to team members for assignments
+function setupTeamMembersListener() {
+  try {
+    // Simple query without orderBy to avoid index requirement
+    const q = query(collection(db, 'users'));
+    unsubscribeUsers = onSnapshot(q, (snapshot) => {
+      teamMembers = [];
+      snapshot.forEach((doc) => {
+        const userData = doc.data();
+        teamMembers.push({
+          uid: userData.uid,
+          email: userData.email,
+          displayName: userData.displayName || userData.email
+        });
+      });
+      // Sort in JavaScript instead of Firestore query
+      teamMembers.sort((a, b) => a.displayName.localeCompare(b.displayName));
+      console.log('Team members loaded:', teamMembers.length);
+    }, (error) => {
+      console.error('Error loading team members:', error);
+      // Don't block sign in if team members fail to load
+      teamMembers = [];
+    });
+  } catch (error) {
+    console.error('Error setting up team members listener:', error);
+    teamMembers = [];
+  }
+}
 
 // Firestore listener
 function setupFirestoreListener() {
@@ -643,6 +756,7 @@ function showTab(tab) {
     document.getElementById('tab-' + tab).classList.add('active');
   }
   if (tab === 'board') renderBoard();
+  if (tab === 'myprojects') renderMyProjects();
   if (tab === 'updates') setupUpdatesListener();
 }
 
@@ -764,6 +878,344 @@ function renderBoard() {
   renderDashboard();
 }
 
+function renderMyProjects() {
+  console.log('renderMyProjects called');
+  const search = document.getElementById('my-search').value.toLowerCase();
+  const statusFilter = document.getElementById('my-status').value;
+  const priFilter = document.getElementById('my-pri').value;
+  
+  // Filter projects assigned to current user
+  let myProjects = projects.filter(p => {
+    if (p.archived) return false;
+    
+    // Check if current user is assigned
+    const assignedTo = p.assignedTo || [];
+    const isAssigned = assignedTo.some(user => {
+      // Handle both old string format and new user object format
+      if (typeof user === 'string') {
+        return user.toLowerCase().includes(currentUser.email.toLowerCase()) || 
+               user.toLowerCase().includes(currentUser.displayName?.toLowerCase());
+      } else {
+        return user.uid === currentUser.uid;
+      }
+    });
+    
+    if (!isAssigned) return false;
+    
+    // Apply filters
+    if (search && !p.name.toLowerCase().includes(search) && 
+        !(p.description || '').toLowerCase().includes(search)) return false;
+    if (statusFilter && p.status !== statusFilter.toLowerCase()) return false;
+    if (priFilter && p.priority !== priFilter) return false;
+    
+    return true;
+  });
+  
+  const container = document.getElementById('my-projects-container');
+  
+  if (myProjects.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#6B7280;"><div style="font-size:48px;margin-bottom:12px;">📋</div><div style="font-size:12pt;font-weight:600;margin-bottom:8px;">No assigned projects</div><div style="font-size:9pt;">Projects assigned to you will appear here</div></div>';
+    return;
+  }
+  
+  // Group by status
+  const byStatus = {
+    pending: myProjects.filter(p => p.status === 'pending'),
+    active: myProjects.filter(p => p.status === 'active'),
+    completed: myProjects.filter(p => p.status === 'completed')
+  };
+  
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;">
+      <div>
+        <div style="font-size:10pt;font-weight:700;color:#92400E;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          🟡 PENDING <span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:12px;font-size:8pt;">${byStatus.pending.length}</span>
+        </div>
+        <div id="my-cards-pending" class="cards-col"></div>
+      </div>
+      <div>
+        <div style="font-size:10pt;font-weight:700;color:#065F46;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          🟢 ACTIVE <span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:12px;font-size:8pt;">${byStatus.active.length}</span>
+        </div>
+        <div id="my-cards-active" class="cards-col"></div>
+      </div>
+      <div>
+        <div style="font-size:10pt;font-weight:700;color:#1E40AF;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          🔵 COMPLETED <span style="background:#DBEAFE;color:#1E40AF;padding:2px 8px;border-radius:12px;font-size:8pt;">${byStatus.completed.length}</span>
+        </div>
+        <div id="my-cards-completed" class="cards-col"></div>
+      </div>
+    </div>
+  `;
+  
+  // Render cards in each column
+  ['pending', 'active', 'completed'].forEach(status => {
+    const col = document.getElementById('my-cards-' + status);
+    const list = byStatus[status];
+    
+    if (list.length === 0) {
+      col.innerHTML = '<div class="empty-col">No projects here</div>';
+    } else {
+      col.innerHTML = list.map(p => cardHTML(p, true)).join('');
+      col.querySelectorAll('.card').forEach(el => {
+        el.addEventListener('click', () => openDetail(el.dataset.id));
+      });
+    }
+  });
+}
+
+function performGlobalSearch() {
+  const searchInput = document.getElementById('global-search');
+  const dropdown = document.getElementById('search-dropdown');
+  const resultsList = document.getElementById('search-results-list');
+  const query = searchInput.value.trim().toLowerCase();
+  
+  // If empty, hide dropdown
+  if (!query) {
+    dropdown.style.display = 'none';
+    return;
+  }
+  
+  // Search across all projects
+  const results = projects.filter(p => {
+    if (p.archived) return false;
+    
+    // Search in various fields
+    if (p.name && p.name.toLowerCase().includes(query)) return true;
+    if (p.description && p.description.toLowerCase().includes(query)) return true;
+    if (p.service && p.service.toLowerCase().includes(query)) return true;
+    if (p.status && p.status.toLowerCase().includes(query)) return true;
+    if (p.priority && p.priority.toLowerCase().includes(query)) return true;
+    if (p.difficulty && p.difficulty.toLowerCase().includes(query)) return true;
+    if (p.stakeholderTags && p.stakeholderTags.some(tag => tag.toLowerCase().includes(query))) return true;
+    if (p.assignedTo && p.assignedTo.some(user => {
+      if (typeof user === 'string') return user.toLowerCase().includes(query);
+      return user.displayName.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+    })) return true;
+    
+    return false;
+  });
+  
+  // Show dropdown
+  dropdown.style.display = 'block';
+  
+  if (results.length === 0) {
+    resultsList.innerHTML = `
+      <div style="padding:20px;text-align:center;color:#6B7280;font-size:9pt;">
+        <div style="margin-bottom:8px;">🔍</div>
+        <div>No results found for "${esc(searchInput.value)}"</div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Show results count header
+  const header = `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:9pt;font-weight:600;color:#6B7280;">
+      ${results.length} result${results.length !== 1 ? 's' : ''} found
+    </div>
+  `;
+  
+  // Render results as list items
+  const items = results.slice(0, 10).map(p => {
+    const statusColors = {
+      pending: { bg: '#FEF3C7', text: '#92400E' },
+      active: { bg: '#D1FAE5', text: '#065F46' },
+      completed: { bg: '#DBEAFE', text: '#1E40AF' }
+    };
+    const color = statusColors[p.status] || statusColors.pending;
+    
+    return `
+      <div class="search-result-item" onclick="openDetail('${p.id}'); clearGlobalSearch();" style="padding:12px 16px;border-bottom:1px solid #F3F4F6;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
+        <div style="display:flex;align-items:start;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:10pt;color:#1F2937;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name)}</div>
+            <div style="font-size:8pt;color:#6B7280;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(p.description || 'No description')}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${p.service ? `<span style="font-size:7pt;padding:2px 6px;border-radius:8px;background:#DBEAFE;color:#1E40AF;font-weight:600;">${esc(p.service)}</span>` : ''}
+              <span style="font-size:7pt;padding:2px 6px;border-radius:8px;background:${color.bg};color:${color.text};font-weight:600;text-transform:uppercase;">${p.status || 'pending'}</span>
+              ${p.priority ? `<span class="tag tag-${p.priority.toLowerCase()}" style="font-size:7pt;padding:2px 6px;">${p.priority}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  const footer = results.length > 10 ? `
+    <div style="padding:12px 16px;text-align:center;font-size:8pt;color:#6B7280;font-style:italic;">
+      Showing first 10 of ${results.length} results
+    </div>
+  ` : '';
+  
+  resultsList.innerHTML = header + items + footer;
+}
+
+function clearGlobalSearch() {
+  document.getElementById('global-search').value = '';
+  document.getElementById('search-dropdown').style.display = 'none';
+}
+
+// Close search dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const searchInput = document.getElementById('global-search');
+  const dropdown = document.getElementById('search-dropdown');
+  
+  if (searchInput && dropdown && 
+      !searchInput.contains(e.target) && 
+      !dropdown.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
+function exportProjects(source) {
+  let projectsToExport = [];
+  let filename = 'projects';
+  
+  if (source === 'board') {
+    // Export filtered projects from board view
+    projectsToExport = boardFiltered();
+    filename = 'all-projects';
+  } else if (source === 'service') {
+    // Export filtered projects from current service tab
+    projectsToExport = svcFiltered();
+    filename = `${currentSvc || 'service'}-projects`;
+  } else if (source === 'myprojects') {
+    // Export projects assigned to current user
+    const search = document.getElementById('my-search').value.toLowerCase();
+    const statusFilter = document.getElementById('my-status').value;
+    const priFilter = document.getElementById('my-pri').value;
+    
+    projectsToExport = projects.filter(p => {
+      if (p.archived) return false;
+      
+      // Check if current user is assigned
+      const assignedTo = p.assignedTo || [];
+      const isAssigned = assignedTo.some(user => {
+        if (typeof user === 'string') {
+          return user.toLowerCase().includes(currentUser.email.toLowerCase()) || 
+                 user.toLowerCase().includes(currentUser.displayName?.toLowerCase());
+        } else {
+          return user.uid === currentUser.uid;
+        }
+      });
+      
+      if (!isAssigned) return false;
+      
+      // Apply filters
+      if (search && !p.name.toLowerCase().includes(search) && 
+          !(p.description || '').toLowerCase().includes(search)) return false;
+      if (statusFilter && p.status !== statusFilter.toLowerCase()) return false;
+      if (priFilter && p.priority !== priFilter) return false;
+      
+      return true;
+    });
+    
+    filename = 'my-projects';
+  }
+  
+  if (projectsToExport.length === 0) {
+    alert('No projects to export');
+    return;
+  }
+  
+  // CSV headers
+  const headers = [
+    'Project Name',
+    'Description',
+    'Service',
+    'Status',
+    'Priority',
+    'Difficulty',
+    'Year',
+    'Due Date',
+    'Assigned To',
+    'Tags',
+    'Submitter',
+    'Contact',
+    'Created At'
+  ];
+  
+  // Convert projects to CSV rows
+  const rows = projectsToExport.map(p => {
+    // Format assigned users
+    const assignedNames = (p.assignedTo || []).map(user => {
+      if (typeof user === 'string') return user;
+      return user.displayName || user.email;
+    }).join('; ');
+    
+    // Format tags
+    const tags = (p.stakeholderTags || []).join('; ');
+    
+    // Format created date - handle different formats
+    let createdDate = '';
+    if (p.createdAt) {
+      try {
+        // Check if it's a Firestore Timestamp with seconds
+        if (p.createdAt.seconds) {
+          createdDate = new Date(p.createdAt.seconds * 1000).toLocaleDateString();
+        } 
+        // Check if it's already a Date object or date string
+        else {
+          const date = new Date(p.createdAt);
+          if (!isNaN(date.getTime())) {
+            createdDate = date.toLocaleDateString();
+          }
+        }
+      } catch (e) {
+        console.error('Error formatting date:', e);
+        createdDate = '';
+      }
+    }
+    
+    return [
+      escapeCSV(p.name || ''),
+      escapeCSV(p.description || ''),
+      escapeCSV(p.service || ''),
+      escapeCSV(p.status || ''),
+      escapeCSV(p.priority || ''),
+      escapeCSV(p.difficulty || ''),
+      p.year || '',
+      p.dueDate || '',
+      escapeCSV(assignedNames),
+      escapeCSV(tags),
+      escapeCSV(p.submitter || ''),
+      escapeCSV(p.submitterContact || ''),
+      createdDate
+    ];
+  });
+  
+  // Combine headers and rows
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+  
+  // Create download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function escapeCSV(str) {
+  if (str == null) return '';
+  const s = String(str);
+  // If contains comma, quote, or newline, wrap in quotes and escape quotes
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+
 function renderDashboard() {
   const now = new Date(); now.setHours(0, 0, 0, 0);
   const ps = projects.filter(p => !p.archived);
@@ -802,7 +1254,10 @@ function renderSvc() {
         <td><span class="tag tag-${(p.status || 'pending').toLowerCase()}">${p.status || 'pending'}</span></td>
         <td><span class="tag tag-${(p.priority || 'medium').toLowerCase()}">${p.priority || '—'}</span></td>
         <td><span class="tag tag-${(p.difficulty || 'medium').toLowerCase()}">${p.difficulty || '—'}</span></td>
-        <td>${(p.assignedTo || []).map(a => `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-size:7pt;font-weight:600;">${esc(a)}</span>`).join(' ')}</td>
+        <td>${(p.assignedTo || []).map(a => {
+          const name = typeof a === 'string' ? a : (a.displayName || a.email);
+          return `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-size:7pt;font-weight:600;">${esc(name)}</span>`;
+        }).join(' ')}</td>
         <td>${p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</td>
         <td>${p.createdAt || ''}</td>
       </tr>`).join('')}</tbody>
@@ -852,8 +1307,7 @@ function cardHTML(p, showSvc) {
   const due = p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   const started = p.startDate ? new Date(p.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   const completed = p.completedAt ? new Date(p.completedAt + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-  const assignees = (p.assignedTo || []).slice(0, 2).map(a => `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">👤 ${esc(a)}</span>`).join('');
-  const moreAssigned = (p.assignedTo || []).length > 2 ? `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">+${(p.assignedTo || []).length - 2}</span>` : '';
+  const assigneesHtml = renderAssigneeAvatars(p.assignedTo, 2);
   const archivedStyle = p.archived ? 'opacity:0.5;border-left:3px solid #6B7280;' : '';
   const archivedBadge = p.archived ? '<span style="color:#fff;background:#6B7280;font-size:7pt;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px;">📦 ARCHIVED</span>' : '';
   
@@ -867,7 +1321,7 @@ function cardHTML(p, showSvc) {
       ${p.year ? `<span class="tag tag-year">${p.year}</span>` : ''}
       ${(p.stakeholderTags || []).slice(0, 2).map(t => `<span class="tag tag-stake">${esc(t)}</span>`).join('')}
     </div>
-    ${assignees || moreAssigned ? `<div style="margin-top:4px;">${assignees}${moreAssigned}</div>` : ''}
+    ${assigneesHtml ? `<div style="margin-top:4px;display:flex;align-items:center;">${assigneesHtml}</div>` : ''}
     ${started || completed || p.submitter ? `<div class="card-sub">
       ${p.submitter ? `by ${esc(p.submitter)}` : ''}
       ${started ? ` · 🟢 ${started}` : ''}
@@ -1026,7 +1480,9 @@ function openDetail(id) {
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px;">
           <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Assigned</label>
           <div id="d-assigned-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--input);border:1px solid var(--border);border-radius:4px;padding:4px 6px;flex:1;">
-            <input type="text" class="tag-input" id="d-assigned-input" placeholder="Type name + Enter" style="background:transparent;border:none;color:var(--text);font-size:8pt;min-width:120px;flex:1;" onkeydown="addAssigneeTag(event)"/>
+            <select id="d-assigned-select" style="background:transparent;border:none;color:var(--text);font-size:8pt;min-width:120px;flex:1;" onchange="addAssigneeFromDropdown()">
+              <option value="">+ Assign team member</option>
+            </select>
           </div>
         </div>
         
@@ -1223,6 +1679,7 @@ function openDetail(id) {
   
   // Render tags
   renderAssigneeTags(assigneeTags);
+  populateAssigneeDropdown();
   renderStakeTags(stakeTags);
   
   // Populate submission info
@@ -1267,6 +1724,7 @@ function updateRibbonDisplay() {
   
   if (difficultyBadge) {
     difficultyBadge.textContent = difficulty;
+    difficultyBadge.className = 'tag tag-diff';
   }
 }
 
@@ -1421,7 +1879,64 @@ function renderStakeTags(tags) {
   wrap.appendChild(inp);
 }
 
+function populateAssigneeDropdown() {
+  const select = document.getElementById('d-assigned-select');
+  if (!select) return;
+  
+  // Clear existing options except the first one
+  select.innerHTML = '<option value="">+ Assign team member</option>';
+  
+  // Filter out already assigned team members
+  const assignedUids = assigneeTags.map(a => a.uid);
+  const availableMembers = teamMembers.filter(m => !assignedUids.includes(m.uid));
+  
+  // Check for duplicate names
+  const nameCounts = {};
+  availableMembers.forEach(member => {
+    nameCounts[member.displayName] = (nameCounts[member.displayName] || 0) + 1;
+  });
+  
+  // Add team members as options with email if name is duplicated
+  availableMembers.forEach(member => {
+    const option = document.createElement('option');
+    option.value = member.uid;
+    
+    // If this name appears multiple times, show email for clarity
+    if (nameCounts[member.displayName] > 1) {
+      option.textContent = `${member.displayName} (${member.email})`;
+    } else {
+      option.textContent = member.displayName;
+    }
+    
+    select.appendChild(option);
+  });
+}
+
+function addAssigneeFromDropdown() {
+  const select = document.getElementById('d-assigned-select');
+  const uid = select.value;
+  
+  if (!uid) return;
+  
+  const user = teamMembers.find(m => m.uid === uid);
+  if (!user) return;
+  
+  // Check if already assigned
+  if (assigneeTags.some(a => a.uid === uid)) {
+    select.value = '';
+    return;
+  }
+  
+  assigneeTags.push(user);
+  markDirty();
+  renderAssigneeTags(assigneeTags);
+  populateAssigneeDropdown();
+  updateRibbonDisplay();
+  select.value = '';
+}
+
 function addAssigneeTag(e) {
+  // Legacy function - keeping for backwards compatibility
   if (e.key !== 'Enter') return;
   const val = e.target.value.trim();
   if (!val) return;
@@ -1435,24 +1950,93 @@ function addAssigneeTag(e) {
 function removeAssigneeTag(i) {
   assigneeTags.splice(i, 1);
   renderAssigneeTags(assigneeTags);
+  populateAssigneeDropdown();
   markDirty();
   updateRibbonDisplay();
 }
 
+function getInitials(name) {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+}
+
+function getAvatarColor(uid) {
+  // Generate consistent color based on uid
+  const colors = ['#4A90D9', '#E8874A', '#52B788', '#A855F7', '#EF4444', '#F59E0B', '#06B6D4', '#84CC16'];
+  const index = uid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return colors[index];
+}
+
+function renderAssigneeAvatars(assignedTo, maxShow = 2) {
+  if (!assignedTo || assignedTo.length === 0) return '';
+  
+  const avatars = assignedTo.slice(0, maxShow).map(user => {
+    // Handle both old string format and new user object format
+    if (typeof user === 'string') {
+      return `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">👤 ${esc(user)}</span>`;
+    } else {
+      const initials = getInitials(user.displayName);
+      const color = getAvatarColor(user.uid);
+      const tooltip = `${esc(user.displayName)} (${esc(user.email)})`;
+      return `<div style="width:24px;height:24px;border-radius:50%;background:${color};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:8pt;font-weight:700;margin-right:2px;" title="${tooltip}">${initials}</div>`;
+    }
+  }).join('');
+  
+  const more = assignedTo.length > maxShow ? `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">+${assignedTo.length - maxShow}</span>` : '';
+  
+  return avatars + more;
+}
+
 function renderAssigneeTags(tags) {
   const wrap = document.getElementById('d-assigned-wrap');
-  const inp = document.getElementById('d-assigned-input');
+  const select = document.getElementById('d-assigned-select');
+  
+  if (!wrap) return;
+  
   wrap.innerHTML = '';
-  tags.forEach((t, i) => {
-    const tag = document.createElement('span');
-    tag.className = 'stake-tag';
-    tag.style.background = '#F3E8FF';
-    tag.style.borderColor = '#C084FC';
-    tag.style.color = '#6B21A8';
-    tag.innerHTML = `${esc(t)} <button onclick="removeAssigneeTag(${i})">×</button>`;
+  
+  tags.forEach((user, i) => {
+    const tag = document.createElement('div');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#F3E8FF;border:1px solid #C084FC;color:#6B21A8;padding:2px 6px;border-radius:12px;font-size:8pt;font-weight:600;';
+    
+    // Handle both old string format and new user object format
+    if (typeof user === 'string') {
+      // Old format - just show the string
+      tag.innerHTML = `${esc(user)} <button onclick="removeAssigneeTag(${i})" style="background:none;border:none;color:#6B21A8;cursor:pointer;padding:0 2px;font-size:14pt;line-height:1;">×</button>`;
+    } else {
+      // New format - show avatar and name
+      tag.title = `${user.displayName} (${user.email})`; // Tooltip with email
+      
+      // Avatar circle
+      const avatar = document.createElement('div');
+      avatar.style.cssText = `width:18px;height:18px;border-radius:50%;background:${getAvatarColor(user.uid)};color:white;display:flex;align-items:center;justify-content:center;font-size:7pt;font-weight:700;`;
+      avatar.textContent = getInitials(user.displayName);
+      
+      // Name
+      const name = document.createElement('span');
+      name.textContent = user.displayName;
+      
+      // Remove button
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '×';
+      removeBtn.style.cssText = 'background:none;border:none;color:#6B21A8;cursor:pointer;padding:0 2px;font-size:14pt;line-height:1;';
+      removeBtn.onclick = () => removeAssigneeTag(i);
+      
+      tag.appendChild(avatar);
+      tag.appendChild(name);
+      tag.appendChild(removeBtn);
+    }
+    
     wrap.appendChild(tag);
   });
-  wrap.appendChild(inp);
+  
+  if (select) {
+    wrap.appendChild(select);
+  }
 }
 
 function showSavedFlash() {
@@ -2110,19 +2694,222 @@ function renderUpdates() {
   
   if (noUpd) noUpd.style.display = 'none';
   
-  tbody.innerHTML = updates.map(u => `
+  tbody.innerHTML = updates.map(u => {
+    const replyCount = (u.replies || []).length;
+    const repliesId = `replies-${u.id}`;
+    
+    return `
     <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:12px;font-size:9pt;color:#1F2937;">${u.date || '—'}</td>
-      <td style="padding:12px;font-size:9pt;color:#1F2937;font-weight:600;">${esc(u.projectName || '')}</td>
-      <td style="padding:12px;font-size:9pt;"><span class="tag tag-svc">${esc(u.service || '')}</span></td>
-      <td style="padding:12px;font-size:9pt;color:#1F2937;">${esc(u.updatedBy || '')}</td>
-      <td style="padding:12px;font-size:9pt;color:#1F2937;">${esc(u.description || '')}</td>
-      <td style="padding:12px;">
-        <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
+      <td colspan="6" style="padding:0;">
+        <!-- Main Update -->
+        <div style="padding:16px;background:#fff;">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <span style="font-size:8pt;color:#6B7280;">${u.date || '—'}</span>
+                <span style="font-weight:700;font-size:10pt;color:#1F2937;">${esc(u.projectName || '')}</span>
+                <span class="tag tag-svc" style="font-size:7pt;">${esc(u.service || '')}</span>
+              </div>
+              <div style="font-size:9pt;color:#1F2937;margin-bottom:8px;">${esc(u.description || '')}</div>
+              <div style="font-size:8pt;color:#6B7280;">
+                Updated by ${esc(u.updatedBy || '')}
+              </div>
+            </div>
+            <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;cursor:pointer;white-space:nowrap;">Delete</button>
+          </div>
+          
+          <!-- Reply Actions -->
+          <div style="display:flex;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #F3F4F6;">
+            <button onclick="toggleReplyForm('${u.id}')" style="background:none;border:none;color:#3B82F6;font-size:8pt;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='none'">
+              💬 Reply
+            </button>
+            ${replyCount > 0 ? `
+              <button onclick="toggleReplies('${u.id}')" style="background:none;border:none;color:#6B7280;font-size:8pt;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='none'">
+                <span id="toggle-text-${u.id}">▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}</span>
+              </button>
+            ` : ''}
+          </div>
+          
+          <!-- Reply Form (hidden by default) -->
+          <div id="reply-form-${u.id}" style="display:none;margin-top:12px;padding:12px;background:#F9FAFB;border-radius:6px;">
+            <textarea id="reply-text-${u.id}" placeholder="Write a reply..." style="width:100%;min-height:60px;padding:8px;border:1px solid var(--border);border-radius:4px;font-size:9pt;font-family:var(--font);resize:vertical;"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button onclick="addReply('${u.id}')" style="background:#3B82F6;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Post Reply</button>
+              <button onclick="cancelReply('${u.id}')" style="background:#F3F4F6;color:#1F2937;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Cancel</button>
+            </div>
+          </div>
+          
+          <!-- Replies Section (hidden by default) -->
+          <div id="${repliesId}" style="display:none;margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
+            ${renderReplies(u.replies || [])}
+          </div>
+        </div>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
   console.log('Table updated with', updates.length, 'rows');
+}
+
+function toggleReplyForm(updateId) {
+  const form = document.getElementById(`reply-form-${updateId}`);
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    document.getElementById(`reply-text-${updateId}`).focus();
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+function cancelReply(updateId) {
+  document.getElementById(`reply-form-${updateId}`).style.display = 'none';
+  document.getElementById(`reply-text-${updateId}`).value = '';
+}
+
+function toggleReplies(updateId) {
+  const repliesDiv = document.getElementById(`replies-${updateId}`);
+  const toggleText = document.getElementById(`toggle-text-${updateId}`);
+  const update = window.allUpdates.find(u => u.id === updateId);
+  const replyCount = (update?.replies || []).length;
+  
+  if (repliesDiv.style.display === 'none') {
+    repliesDiv.style.display = 'block';
+    toggleText.textContent = `▲ Hide ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+  } else {
+    repliesDiv.style.display = 'none';
+    toggleText.textContent = `▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+  }
+}
+
+async function addReply(updateId) {
+  const textEl = document.getElementById(`reply-text-${updateId}`);
+  const replyText = textEl.value.trim();
+  
+  if (!replyText) {
+    alert('Please enter a reply');
+    return;
+  }
+  
+  try {
+    const update = window.allUpdates.find(u => u.id === updateId);
+    if (!update) {
+      alert('Update not found');
+      return;
+    }
+    
+    // Create reply object
+    const reply = {
+      id: 'reply_' + Date.now(),
+      updateId: updateId, // Store which update this reply belongs to
+      text: replyText,
+      author: currentUser.displayName || currentUser.email,
+      authorUid: currentUser.uid,
+      authorEmail: currentUser.email,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Add to Firestore
+    const updateRef = doc(db, 'updates', updateId);
+    const replies = update.replies || [];
+    replies.push(reply);
+    
+    await updateDoc(updateRef, {
+      replies: replies
+    });
+    
+    console.log('Reply added successfully');
+    
+    // Update local data
+    update.replies = replies;
+    
+    // Clear form and hide it
+    textEl.value = '';
+    cancelReply(updateId);
+    
+    // Re-render updates to show new reply
+    renderUpdates();
+    
+    // Auto-expand replies to show the new one
+    setTimeout(() => {
+      const repliesDiv = document.getElementById(`replies-${updateId}`);
+      if (repliesDiv) repliesDiv.style.display = 'block';
+      const toggleText = document.getElementById(`toggle-text-${updateId}`);
+      if (toggleText) toggleText.textContent = `▲ Hide ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`;
+    }, 100);
+    
+  } catch (error) {
+    console.error('Error adding reply:', error);
+    alert('Error adding reply: ' + error.message);
+  }
+}
+
+async function deleteReply(updateId, replyId) {
+  if (!confirm('Delete this reply?')) return;
+  
+  try {
+    const update = window.allUpdates.find(u => u.id === updateId);
+    if (!update) {
+      alert('Update not found');
+      return;
+    }
+    
+    // Filter out the reply
+    const updatedReplies = (update.replies || []).filter(r => r.id !== replyId);
+    
+    // Update in Firestore
+    const updateRef = doc(db, 'updates', updateId);
+    await updateDoc(updateRef, {
+      replies: updatedReplies
+    });
+    
+    console.log('Reply deleted successfully');
+    
+    // Update local data
+    update.replies = updatedReplies;
+    
+    // Re-render to show changes
+    renderUpdates();
+    
+    // Keep replies expanded if there are still some
+    if (updatedReplies.length > 0) {
+      setTimeout(() => {
+        const repliesDiv = document.getElementById(`replies-${updateId}`);
+        if (repliesDiv) repliesDiv.style.display = 'block';
+        const toggleText = document.getElementById(`toggle-text-${updateId}`);
+        if (toggleText) toggleText.textContent = `▲ Hide ${updatedReplies.length} ${updatedReplies.length === 1 ? 'reply' : 'replies'}`;
+      }, 100);
+    }
+    
+  } catch (error) {
+    console.error('Error deleting reply:', error);
+    alert('Error deleting reply: ' + error.message);
+  }
+}
+
+function renderReplies(replies) {
+  if (!replies || replies.length === 0) return '';
+  
+  return replies.map(r => {
+    const isAuthor = currentUser && r.authorUid === currentUser.uid;
+    
+    return `
+    <div style="padding:12px;background:#F9FAFB;border-radius:6px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
+        <div style="font-size:8pt;color:#6B7280;">
+          <span style="font-weight:600;color:#1F2937;">${esc(r.author || 'Unknown')}</span>
+          <span style="margin:0 6px;">•</span>
+          <span>${r.timestamp ? new Date(r.timestamp).toLocaleDateString() + ' ' + new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+        </div>
+        ${isAuthor ? `
+          <button onclick="deleteReply('${r.updateId}', '${r.id}')" style="background:none;border:none;color:#EF4444;font-size:8pt;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='none'" title="Delete reply">
+            🗑️ Delete
+          </button>
+        ` : ''}
+      </div>
+      <div style="font-size:9pt;color:#1F2937;">${esc(r.text || '')}</div>
+    </div>
+  `;
+  }).join('');
 }
 
 async function deleteUpdate(id) {
@@ -2356,18 +3143,52 @@ function renderProjectUpdates() {
     return;
   }
   
-  list.innerHTML = projectUpdates.map(u => `
-    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px;">
+  list.innerHTML = projectUpdates.map(u => {
+    const replyCount = (u.replies || []).length;
+    const repliesId = `proj-replies-${u.id}`;
+    
+    return `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:12px;">
+      <!-- Main Update -->
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
-        <div style="display:flex;gap:12px;align-items:center;">
-          <span style="font-weight:600;font-size:9pt;color:#1F2937;">${u.date || '—'}</span>
-          <span style="font-size:9pt;color:#6B7280;">by ${esc(u.updatedBy || '')}</span>
+        <div style="flex:1;">
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+            <span style="font-weight:600;font-size:9pt;color:#1F2937;">${u.date || '—'}</span>
+            <span style="font-size:8pt;color:#6B7280;">by ${esc(u.updatedBy || '')}</span>
+          </div>
+          <div style="font-size:9pt;color:#1F2937;">${esc(u.description || '')}</div>
         </div>
-        <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
+        <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;cursor:pointer;white-space:nowrap;">Delete</button>
       </div>
-      <div style="font-size:9pt;color:#1F2937;">${esc(u.description || '')}</div>
+      
+      <!-- Reply Actions -->
+      <div style="display:flex;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #F3F4F6;">
+        <button onclick="toggleReplyForm('${u.id}')" style="background:none;border:none;color:#3B82F6;font-size:8pt;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='none'">
+          💬 Reply
+        </button>
+        ${replyCount > 0 ? `
+          <button onclick="toggleReplies('${u.id}')" style="background:none;border:none;color:#6B7280;font-size:8pt;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='none'">
+            <span id="toggle-text-${u.id}">▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}</span>
+          </button>
+        ` : ''}
+      </div>
+      
+      <!-- Reply Form (hidden by default) -->
+      <div id="reply-form-${u.id}" style="display:none;margin-top:12px;padding:12px;background:#F9FAFB;border-radius:6px;">
+        <textarea id="reply-text-${u.id}" placeholder="Write a reply..." style="width:100%;min-height:60px;padding:8px;border:1px solid var(--border);border-radius:4px;font-size:9pt;font-family:var(--font);resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="addReply('${u.id}')" style="background:#3B82F6;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Post Reply</button>
+          <button onclick="cancelReply('${u.id}')" style="background:#F3F4F6;color:#1F2937;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      
+      <!-- Replies Section (hidden by default) -->
+      <div id="replies-${u.id}" style="display:none;margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
+        ${renderReplies(u.replies || [])}
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 window.addProjectUpdate = addProjectUpdate;
