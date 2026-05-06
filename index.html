@@ -170,6 +170,35 @@ tr:hover{background:#F9FAFB;}
 /* Saved Flash */
 .saved-flash{position:fixed;top:20px;right:20px;background:#10B981;color:#fff;padding:12px 24px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:1000;animation:slideIn 0.3s;}
 @keyframes slideIn{from{transform:translateX(400px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+/* Gantt Chart */
+.gantt-wrap{overflow-x:auto;}
+.gantt-controls{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.gantt-controls label{font-size:8.5pt;font-weight:700;color:#6B7280;}
+.gantt-controls input,.gantt-controls select{padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-size:9pt;font-family:var(--font);outline:none;background:#fff;color:#1F2937;}
+.gantt-controls input:focus,.gantt-controls select:focus{border-color:var(--accent);}
+.gantt-container{min-width:600px;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#fff;}
+.gantt-header{display:flex;background:#1F2937;color:#fff;}
+.gantt-label-col{width:180px;flex-shrink:0;padding:7px 10px;font-size:8pt;font-weight:700;border-right:1px solid rgba(255,255,255,.15);}
+.gantt-weeks-header{flex:1;display:flex;}
+.gantt-week-cell{flex:1;padding:7px 4px;font-size:7.5pt;text-align:center;border-right:1px solid rgba(255,255,255,.1);white-space:nowrap;}
+.gantt-row{display:flex;border-bottom:1px solid var(--border);min-height:36px;position:relative;}
+.gantt-row:last-child{border-bottom:none;}
+.gantt-row:nth-child(even){background:#F9FAFB;}
+.gantt-row-label{width:180px;flex-shrink:0;padding:6px 10px;font-size:9pt;border-right:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.gantt-row-label input{flex:1;border:none;background:transparent;font-size:9pt;font-family:var(--font);outline:none;color:#1F2937;}
+.gantt-row-label input:focus{background:#fff;border-bottom:1px solid var(--accent);}
+.gantt-row-del{background:none;border:none;cursor:pointer;color:#6B7280;font-size:12px;flex-shrink:0;}
+.gantt-row-del:hover{color:#EF4444;}
+.gantt-bars{flex:1;position:relative;}
+.gantt-grid-lines{position:absolute;inset:0;display:flex;pointer-events:none;}
+.gantt-grid-line{flex:1;border-right:1px solid #E5E7EB;}
+.gantt-bar{position:absolute;top:5px;height:26px;border-radius:4px;cursor:grab;display:flex;align-items:center;padding:0 8px;font-size:8pt;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;transition:filter .1s;}
+.gantt-bar:hover{filter:brightness(1.1);}
+.gantt-bar.grabbing{cursor:grabbing;}
+.gantt-resize-handle{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;background:rgba(255,255,255,.3);border-radius:0 4px 4px 0;}
+.gantt-add-row{padding:8px 10px;background:#F9FAFB;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+
 </style>
 </head>
 <body>
@@ -378,6 +407,8 @@ const db = getFirestore(app);
 // Global state
 let currentUser = null;
 let projects = [];
+const BAR_COLORS = ['#4A90D9','#E8874A','#52B788','#A855F7','#EF4444','#F59E0B','#06B6D4','#84CC16'];
+let ganttDrag = null;
 let unsubscribe = null;
 let currentSvc = null;
 let currentView = 'table';
@@ -527,6 +558,12 @@ function esc(s) {
   const div = document.createElement('div');
   div.textContent = s || '';
   return div.innerHTML;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const date = typeof d === 'string' ? new Date(d + 'T00:00:00') : new Date(d);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // Navigation
@@ -890,8 +927,6 @@ function openDetail(id) {
   assigneeTags = p.assignedTo || [];
   stakeTags = p.stakeholderTags || [];
   
-  const formatDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-  
   const detailHTML = `
     <div class="detail-header">
       <button class="back-btn" onclick="goBack()">← Back</button>
@@ -1016,94 +1051,20 @@ function openDetail(id) {
     </div>
     
     <div class="detail-content" id="dtab-gantt">
-      <div style="margin-bottom:20px;">
-        <h3 style="font-size:11pt;font-weight:700;margin-bottom:16px;color:#1F2937;">Project Timeline</h3>
-        
-        <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:20px;">
-          <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;margin-bottom:24px;">
-            <div style="font-size:8pt;font-weight:600;color:#6B7280;">SUBMISSION</div>
-            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.submissionDate) || '—'}</div>
-            
-            <div style="font-size:8pt;font-weight:600;color:#6B7280;">START DATE</div>
-            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.startDate) || 'Not started'}</div>
-            
-            <div style="font-size:8pt;font-weight:600;color:#6B7280;">DUE DATE</div>
-            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.dueDate) || '—'}</div>
-            
-            <div style="font-size:8pt;font-weight:600;color:#6B7280;">COMPLETED</div>
-            <div style="font-size:9pt;color:#1F2937;">${formatDate(p.completedAt) || 'Not completed'}</div>
-          </div>
-          
-          ${(() => {
-            const sub = p.submissionDate ? new Date(p.submissionDate) : null;
-            const start = p.startDate ? new Date(p.startDate) : null;
-            const due = p.dueDate ? new Date(p.dueDate) : null;
-            const comp = p.completedAt ? new Date(p.completedAt) : null;
-            
-            if (!sub && !start && !due && !comp) {
-              return '<p style="color:#6B7280;font-size:9pt;text-align:center;padding:20px;">No timeline data available</p>';
-            }
-            
-            // Find earliest and latest dates
-            const dates = [sub, start, due, comp].filter(d => d);
-            const earliest = new Date(Math.min(...dates));
-            const latest = comp || due || new Date();
-            const totalDays = Math.max(1, Math.ceil((latest - earliest) / (1000 * 60 * 60 * 24)));
-            
-            const getPosition = (date) => {
-              if (!date) return null;
-              const days = Math.ceil((date - earliest) / (1000 * 60 * 60 * 24));
-              return (days / totalDays) * 100;
-            };
-            
-            const subPos = getPosition(sub);
-            const startPos = getPosition(start);
-            const duePos = getPosition(due);
-            const compPos = getPosition(comp);
-            
-            return \`
-              <div style="margin-top:24px;">
-                <div style="position:relative;height:60px;background:#fff;border-radius:6px;border:1px solid var(--border);">
-                  \${subPos !== null ? \`<div style="position:absolute;left:\${subPos}%;top:0;bottom:0;width:2px;background:#3B82F6;" title="Submission"></div>\` : ''}
-                  \${startPos !== null ? \`<div style="position:absolute;left:\${startPos}%;top:0;bottom:0;width:2px;background:#10B981;" title="Start"></div>\` : ''}
-                  \${duePos !== null ? \`<div style="position:absolute;left:\${duePos}%;top:0;bottom:0;width:2px;background:#F59E0B;" title="Due"></div>\` : ''}
-                  \${compPos !== null ? \`<div style="position:absolute;left:\${compPos}%;top:0;bottom:0;width:2px;background:#8B5CF6;" title="Completed"></div>\` : ''}
-                  
-                  \${startPos !== null && (duePos !== null || compPos !== null) ? \`
-                    <div style="position:absolute;left:\${startPos}%;right:\${100 - (compPos || duePos)}%;top:20px;height:20px;background:\${compPos ? '#10B981' : '#F59E0B'};opacity:0.3;border-radius:4px;"></div>
-                  \` : ''}
-                </div>
-                
-                <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:8pt;color:#6B7280;">
-                  <span>${formatDate(earliest)}</span>
-                  <span>${formatDate(latest)}</span>
-                </div>
-                
-                <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap;">
-                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
-                    <div style="width:12px;height:12px;background:#3B82F6;border-radius:2px;"></div>
-                    <span>Submission</span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
-                    <div style="width:12px;height:12px;background:#10B981;border-radius:2px;"></div>
-                    <span>Start</span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
-                    <div style="width:12px;height:12px;background:#F59E0B;border-radius:2px;"></div>
-                    <span>Due</span>
-                  </div>
-                  \${compPos !== null ? \`
-                    <div style="display:flex;align-items:center;gap:6px;font-size:8pt;">
-                      <div style="width:12px;height:12px;background:#8B5CF6;border-radius:2px;"></div>
-                      <span>Completed</span>
-                    </div>
-                  \` : ''}
-                </div>
-              </div>
-            \`;
-          })()}
-        </div>
+      <div class="gantt-controls">
+        <label>Start Date</label>
+        <input type="date" id="gantt-start" onchange="saveGanttSettings();renderGanttChart()"/>
+        <label>Weeks</label>
+        <select id="gantt-weeks" onchange="saveGanttSettings();renderGanttChart()">
+          <option value="4">4 weeks</option>
+          <option value="8">8 weeks</option>
+          <option value="12" selected>12 weeks</option>
+          <option value="16">16 weeks</option>
+          <option value="20">20 weeks</option>
+          <option value="24">24 weeks</option>
+        </select>
       </div>
+      <div class="gantt-wrap" id="gantt-wrap"></div>
     </div>
     
     <div class="detail-content" id="dtab-questions">
@@ -1167,6 +1128,12 @@ function openDetail(id) {
   renderLogEntries('questions', p.questions || []);
   renderLogEntries('minutes', p.minutes || []);
   renderLogEntries('notes', p.notes || []);
+  
+  // Initialize and render Gantt chart
+  const g = p.gantt || { startDate: today(), totalWeeks: 12, tasks: [] };
+  document.getElementById('gantt-start').value = g.startDate || today();
+  document.getElementById('gantt-weeks').value = g.totalWeeks || 12;
+  renderGanttChart(); // Fire and forget - don't block
   
   // Update ribbon
   updateRibbon();
@@ -1429,6 +1396,253 @@ function renderLogEntries(type, entries) {
       <div style="white-space:pre-wrap;color:#1F2937;">${esc(e.text)}</div>
     </div>
   `).join('');
+}
+
+// ══════════════════════════════════════════════
+// GANTT CHART FUNCTIONS
+// ══════════════════════════════════════════════
+
+async function getGanttData() {
+  console.log('getGanttData called, currentProjId:', currentProjId);
+  const p = projects.find(x => x.id === currentProjId);
+  console.log('Found project:', p);
+  if (!p) {
+    console.error('Project not found!');
+    return null;
+  }
+  
+  if (!p.gantt) {
+    console.log('Initializing gantt data...');
+    p.gantt = { startDate: today(), totalWeeks: 12, tasks: [] };
+    // Save to Firestore
+    try {
+      await updateDoc(doc(db, 'projects', currentProjId), {
+        gantt: p.gantt,
+        lastModifiedBy: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName || currentUser.email
+        }
+      });
+      console.log('Gantt data initialized and saved');
+    } catch (error) {
+      console.error('Error saving initial gantt:', error);
+    }
+  }
+  
+  return p.gantt;
+}
+
+async function saveGanttSettings() {
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p || !p.gantt) return;
+  
+  p.gantt.startDate = document.getElementById('gantt-start').value || today();
+  p.gantt.totalWeeks = parseInt(document.getElementById('gantt-weeks').value) || 12;
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    gantt: p.gantt,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+}
+
+async function renderGanttChart() {
+  console.log('renderGanttChart called');
+  try {
+    const g = await getGanttData();
+    console.log('Gantt data for render:', g);
+    if (!g) {
+      console.error('No gantt data to render');
+      return;
+    }
+    
+    const wrap = document.getElementById('gantt-wrap');
+    if (!wrap) {
+      console.error('gantt-wrap element not found');
+      return;
+    }
+    
+    const totalWeeks = parseInt(document.getElementById('gantt-weeks').value) || g.totalWeeks || 12;
+    const startDate = document.getElementById('gantt-start').value || g.startDate || today();
+    console.log('Rendering with totalWeeks:', totalWeeks, 'startDate:', startDate);
+    const start = new Date(startDate + 'T00:00:00');
+  
+  // Build week labels
+  let weekLabels = [];
+  for (let i = 0; i < totalWeeks; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i * 7);
+    weekLabels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  }
+  
+  let html = `<div class="gantt-container">
+    <div class="gantt-header">
+      <div class="gantt-label-col">Task</div>
+      <div class="gantt-weeks-header">
+        ${weekLabels.map(l => `<div class="gantt-week-cell">${l}</div>`).join('')}
+      </div>
+    </div>`;
+  
+  (g.tasks || []).forEach((task, ti) => {
+    const color = task.color || BAR_COLORS[ti % BAR_COLORS.length];
+    const leftPct = ((task.startWeek || 0) / totalWeeks * 100).toFixed(2);
+    const widthPct = ((task.durationWeeks || 1) / totalWeeks * 100).toFixed(2);
+    const gridLines = Array(totalWeeks).fill('<div class="gantt-grid-line"></div>').join('');
+    
+    html += `<div class="gantt-row" data-task-id="${task.id}">
+      <div class="gantt-row-label">
+        <input value="${esc(task.name || '')}" placeholder="Task name" onchange="renameGanttTask('${task.id}', this.value)" onclick="event.stopPropagation()"/>
+        <button class="gantt-row-del" onclick="deleteGanttTask('${task.id}')">✕</button>
+      </div>
+      <div class="gantt-bars" data-task-id="${task.id}">
+        <div class="gantt-grid-lines">${gridLines}</div>
+        <div class="gantt-bar" data-task-id="${task.id}"
+          style="left:${leftPct}%;width:${widthPct}%;background:${color};"
+          onmousedown="ganttMouseDown(event, '${task.id}', 'move')">
+          ${esc(task.name || '')}
+          <div class="gantt-resize-handle" onmousedown="ganttMouseDown(event, '${task.id}', 'resize')"></div>
+        </div>
+      </div>
+    </div>`;
+  });
+  
+  html += `<div class="gantt-add-row">
+    <button class="btn-p btn-sm" onclick="addGanttTask()">+ Add Task</button>
+    <span style="font-size:8.5pt;color:#6B7280;">Drag bars to move · Drag right edge to resize</span>
+  </div></div>`;
+  
+  wrap.innerHTML = html;
+  console.log('Gantt chart rendered successfully with', (g.tasks || []).length, 'tasks');
+  } catch (error) {
+    console.error('Error rendering gantt chart:', error);
+  }
+}
+
+async function addGanttTask() {
+  console.log('addGanttTask called');
+  try {
+    const g = await getGanttData();
+    console.log('Got gantt data:', g);
+    if (!g) {
+      console.error('No gantt data returned');
+      return;
+    }
+    if (!g.tasks) g.tasks = [];
+    
+    const newTask = {
+      id: 'gt_' + Date.now(),
+      name: 'New Task',
+      startWeek: 0,
+      durationWeeks: 2,
+      color: BAR_COLORS[g.tasks.length % BAR_COLORS.length]
+    };
+    console.log('Adding task:', newTask);
+    g.tasks.push(newTask);
+    
+    console.log('Saving gantt data...');
+    await saveGanttData();
+    console.log('Rendering chart...');
+    await renderGanttChart();
+    console.log('Done!');
+  } catch (error) {
+    console.error('Error in addGanttTask:', error);
+    alert('Error adding task: ' + error.message);
+  }
+}
+
+async function deleteGanttTask(id) {
+  const g = await getGanttData();
+  if (!g) return;
+  
+  g.tasks = g.tasks.filter(t => t.id !== id);
+  await saveGanttData();
+  await renderGanttChart();
+}
+
+async function renameGanttTask(id, name) {
+  const g = await getGanttData();
+  if (!g) return;
+  
+  const t = g.tasks.find(x => x.id === id);
+  if (t) {
+    t.name = name;
+    await saveGanttData();
+  }
+}
+
+async function ganttMouseDown(e, taskId, mode) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const g = await getGanttData();
+  if (!g) return;
+  
+  const task = g.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  
+  const totalWeeks = parseInt(document.getElementById('gantt-weeks').value) || 12;
+  const barsEl = e.currentTarget.closest('.gantt-bars') || e.currentTarget.parentElement.closest('.gantt-bars');
+  if (!barsEl) return;
+  
+  const containerW = barsEl.getBoundingClientRect().width;
+  const weekW = containerW / totalWeeks;
+  
+  ganttDrag = {
+    taskId,
+    mode,
+    startX: e.clientX,
+    startWeek: task.startWeek,
+    startDuration: task.durationWeeks,
+    weekW,
+    totalWeeks,
+    task
+  };
+  
+  document.addEventListener('mousemove', ganttMouseMove);
+  document.addEventListener('mouseup', ganttMouseUp);
+}
+
+async function ganttMouseMove(e) {
+  if (!ganttDrag) return;
+  
+  const { task, mode, startX, startWeek, startDuration, weekW, totalWeeks } = ganttDrag;
+  const dx = e.clientX - startX;
+  const dw = Math.round(dx / weekW);
+  
+  if (mode === 'move') {
+    task.startWeek = Math.max(0, Math.min(totalWeeks - task.durationWeeks, startWeek + dw));
+  } else {
+    task.durationWeeks = Math.max(1, Math.min(totalWeeks - task.startWeek, startDuration + dw));
+  }
+  
+  await renderGanttChart();
+}
+
+async function ganttMouseUp() {
+  if (ganttDrag) {
+    await saveGanttData();
+    ganttDrag = null;
+  }
+  document.removeEventListener('mousemove', ganttMouseMove);
+  document.removeEventListener('mouseup', ganttMouseUp);
+}
+
+async function saveGanttData() {
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p || !p.gantt) return;
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    gantt: p.gantt,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
 }
 
 </script>
