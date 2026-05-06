@@ -2,388 +2,1145 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Project Tracker - Firebase Demo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Project Tracker - Firebase</title>
 <style>
-:root{
-  --bg:#F4F1EC;--nav:#1B2332;--accent:#D4622A;
-  --card:#fff;--border:#DDD8D0;--text:#1B2332;--muted:#7A7468;
-}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:20px;max-width:900px;margin:0 auto;}
+:root{
+  --bg:#FAFAFA;--panel:#fff;--text:#1F2937;--text-light:#6B7280;--accent:#3B82F6;
+  --border:#E5E7EB;--high:#EF4444;--medium:#F59E0B;--low:#10B981;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:10pt;line-height:1.5;overflow-x:hidden;}
 
-/* Header */
-header{background:var(--nav);color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:20px;display:flex;align-items:center;gap:12px;}
-header h1{font-size:16pt;font-weight:700;flex:1;}
-header span{color:var(--accent);}
-.user-info{font-size:9pt;opacity:.7;display:flex;align-items:center;gap:8px;}
-.user-photo{width:24px;height:24px;border-radius:50%;vertical-align:middle;}
-.btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:5px;font-size:9.5pt;font-weight:600;cursor:pointer;font-family:inherit;}
-.btn:hover{background:#B8501F;}
-.btn-s{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);}
-.btn-s:hover{background:rgba(255,255,255,.25);}
+/* Auth Screen */
+.auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
+.auth-box{background:#fff;padding:40px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:400px;width:90%;}
+.auth-box h1{font-size:24pt;margin-bottom:8px;color:#1F2937;}
+.auth-box p{color:#6B7280;margin-bottom:24px;font-size:9pt;}
+.auth-box input{width:100%;padding:12px;border:1px solid #E5E7EB;border-radius:6px;margin-bottom:12px;font-size:10pt;font-family:var(--font);}
+.auth-box button{width:100%;padding:12px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:10pt;margin-top:8px;}
+.auth-box button:hover{background:#2563EB;}
+.auth-toggle{text-align:center;margin-top:16px;font-size:9pt;color:#6B7280;}
+.auth-toggle a{color:#3B82F6;cursor:pointer;text-decoration:none;}
+.auth-toggle a:hover{text-decoration:underline;}
+.auth-error{background:#FEE2E2;color:#991B1B;padding:12px;border-radius:6px;margin-bottom:12px;font-size:9pt;}
 
-/* Splash */
-#splash{position:fixed;inset:0;background:var(--nav);display:flex;align-items:center;justify-content:center;z-index:1000;}
-.splash-card{background:var(--card);border-radius:12px;padding:40px;max-width:400px;text-align:center;}
-.splash-card h1{font-size:20pt;margin-bottom:8px;}
-.splash-card p{color:var(--muted);margin-bottom:24px;font-size:10pt;}
-.config-box{background:#FFF7ED;border:2px solid #F59E0B;border-radius:6px;padding:12px;margin:16px 0;text-align:left;font-size:9pt;line-height:1.5;}
-.config-box strong{color:#C2720A;}
+/* Main App */
+.app-container{display:none;}
+.top-bar{background:var(--panel);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.top-bar h1{font-size:13pt;font-weight:700;}
+.user-info{display:flex;align-items:center;gap:12px;font-size:9pt;color:var(--text-light);}
+.user-info button{padding:6px 12px;background:#6B7280;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:8pt;}
+.user-info button:hover{background:#4B5563;}
 
-/* Projects */
-.add-section{background:var(--card);padding:16px;border-radius:8px;margin-bottom:16px;border:1px solid var(--border);}
-.add-section h3{font-size:11pt;margin-bottom:12px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;}
-.form-row input,.form-row select{width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:5px;font-size:9.5pt;font-family:inherit;}
-.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent);}
+/* Navigation */
+.nav{background:var(--panel);border-bottom:2px solid var(--border);padding:0 20px;display:flex;gap:4px;}
+.nav button{background:none;border:none;border-bottom:3px solid transparent;padding:12px 20px;cursor:pointer;font-size:9.5pt;font-weight:600;color:var(--text-light);transition:all .2s;}
+.nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav button:hover{color:var(--text);}
 
-.projects-list{background:var(--card);border-radius:8px;border:1px solid var(--border);overflow:hidden;}
-.project-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
-.project-item:last-child{border-bottom:none;}
-.project-item:hover{background:#fafafa;}
-.project-name{flex:1;font-weight:600;font-size:10pt;}
-.project-meta{font-size:8.5pt;color:var(--muted);}
-.status-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:7.5pt;font-weight:700;margin-right:8px;}
-.status-pending{background:#FFF7ED;color:#C2720A;}
-.status-active{background:#EDF7F0;color:#2D7D46;}
-.status-completed{background:#EDF2FB;color:#2255A4;}
-.service-tag{background:#F3F4F6;color:#374151;padding:2px 6px;border-radius:4px;font-size:7.5pt;font-weight:600;margin-right:4px;}
-.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px 8px;}
-.del-btn:hover{color:#C0392B;}
-.live-indicator{display:inline-flex;align-items:center;gap:4px;font-size:8pt;color:#10B981;margin-left:8px;}
-.live-dot{width:6px;height:6px;background:#10B981;border-radius:50%;animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.no-projects{padding:40px;text-align:center;color:var(--muted);font-style:italic;}
+/* Panels */
+.panel{display:none;padding:20px;}
+.panel.active{display:block;}
+
+/* Dashboard */
+.dash-strip{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap;}
+.dash-stat{min-width:80px;text-align:center;}
+.ds-val{font-size:20pt;font-weight:700;}
+.ds-lbl{font-size:7.5pt;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;}
+.dash-stat.ds-warn .ds-val{color:var(--medium);}
+.dash-stat.ds-green .ds-val{color:var(--low);}
+.dash-stat.ds-blue .ds-val{color:var(--accent);}
+.dash-stat.ds-high .ds-val{color:var(--high);}
+.dash-divider{width:1px;background:var(--border);margin:0 8px;}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.search-wrap{position:relative;flex:1;min-width:200px;}
+.si{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:9pt;opacity:0.5;}
+.search-wrap input{width:100%;padding:8px 8px 8px 32px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);}
+.fsel{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);background:var(--panel);cursor:pointer;}
+
+/* Board */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
+.col{background:var(--panel);border-radius:8px;padding:16px;min-height:400px;}
+.col-hd{font-size:10pt;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.cc{background:var(--border);padding:2px 8px;border-radius:10px;font-size:8pt;}
+.col-cards{display:flex;flex-direction:column;gap:12px;}
+.col-cards.drag-over{background:#EFF6FF;border-radius:4px;}
+.empty-col{text-align:center;color:var(--text-light);padding:40px 20px;font-size:9pt;}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:6px;padding:12px;cursor:pointer;transition:all .2s;}
+.card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1);transform:translateY(-2px);}
+.card.ph{border-left-color:var(--high);}
+.card.pm{border-left-color:var(--medium);}
+.card.pl{border-left-color:var(--low);}
+.card.dragging{opacity:0.4;}
+.card-title{font-size:9.5pt;font-weight:700;margin-bottom:4px;line-height:1.3;}
+.card-desc{font-size:8.5pt;color:var(--text-light);margin-bottom:8px;line-height:1.4;}
+.card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.tag{font-size:7pt;padding:3px 8px;border-radius:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+.tag-svc{background:#DBEAFE;color:#1E40AF;}
+.tag-high{background:#FEE2E2;color:#991B1B;}
+.tag-medium{background:#FEF3C7;color:#92400E;}
+.tag-low{background:#D1FAE5;color:#065F46;}
+.tag-diff{background:#F3E8FF;color:#6B21A8;}
+.tag-year{background:#E5E7EB;color:#374151;}
+.tag-stake{background:#FED7AA;color:#9A3412;}
+.card-sub{font-size:7.5pt;color:var(--text-light);margin-top:8px;}
+.upd-dot{display:inline-block;width:6px;height:6px;background:#10B981;border-radius:50%;margin-left:4px;}
+
+/* Detail Panel */
+.detail-header{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.back-btn{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;}
+.back-btn:hover{background:var(--border);}
+.detail-title{font-size:14pt;font-weight:700;flex:1;}
+.detail-svc-badge{background:#DBEAFE;color:#1E40AF;padding:6px 12px;border-radius:6px;font-size:8pt;font-weight:700;}
+.btn-sm{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;font-size:8pt;font-weight:600;}
+.btn-s{background:#6B7280;color:#fff;}
+.btn-s:hover{background:#4B5563;}
+.btn-p{background:#3B82F6;color:#fff;}
+.btn-p:hover{background:#2563EB;}
+.btn-d{background:#EF4444;color:#fff;}
+.btn-d:hover{background:#DC2626;}
+
+/* Detail Tabs */
+.detail-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.dtab{padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
+.dtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.dtab:hover{color:var(--text);}
+.detail-content{display:none;}
+.detail-content.active{display:block;}
+
+/* Tags Row */
+.tags-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.tag-group{flex:1;min-width:200px;}
+.tag-group label{display:block;font-size:8pt;font-weight:600;color:var(--text-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px;}
+.status-sel{display:flex;gap:4px;}
+.sts-btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;opacity:0.6;transition:all .2s;}
+.sts-btn:hover{opacity:0.8;}
+.sts-btn.sel{opacity:1;box-shadow:0 0 0 2px var(--accent);}
+.sts-btn.pend{background:#FEF3C7;color:#92400E;}
+.sts-btn.actv{background:#D1FAE5;color:#065F46;}
+.sts-btn.comp{background:#DBEAFE;color:#1E40AF;}
+.pri-sel{display:flex;gap:4px;}
+.pri-badge{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;opacity:0.6;}
+.pri-badge.sel{opacity:1;}
+.pri-badge.High{background:#FEE2E2;color:#991B1B;}
+.pri-badge.Medium{background:#FEF3C7;color:#92400E;}
+.pri-badge.Low{background:#D1FAE5;color:#065F46;}
+
+/* Forms */
+.frow{display:flex;gap:16px;margin-bottom:16px;}
+.frow.s1{display:block;}
+.ff{flex:1;}
+.ff label{display:block;font-size:8pt;font-weight:600;color:var(--text-light);margin-bottom:6px;}
+.ff input,.ff textarea,.ff select{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);}
+.ff textarea{resize:vertical;min-height:80px;}
+.tag-input{min-width:150px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:8pt;}
+.stake-tag{display:inline-flex;align-items:center;gap:4px;background:#FED7AA;border:1px solid #FDBA74;color:#9A3412;padding:4px 8px;border-radius:10px;font-size:8pt;font-weight:600;}
+.stake-tag button{background:none;border:none;color:#9A3412;cursor:pointer;font-size:10pt;font-weight:700;padding:0 4px;}
+
+/* Submit Form */
+.submit-form{max-width:600px;}
+.submit-form .ff{margin-bottom:16px;}
+.submit-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:10pt;font-weight:600;cursor:pointer;}
+.submit-btn:hover{background:#2563EB;}
+
+/* Table */
+table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:8px;overflow:hidden;}
+th,td{text-align:left;padding:12px;border-bottom:1px solid var(--border);font-size:9pt;}
+th{background:#F9FAFB;font-weight:700;color:var(--text-light);font-size:8pt;text-transform:uppercase;letter-spacing:0.5px;}
+tr:hover{background:#F9FAFB;}
+
+/* Service Tabs */
+.service-nav{display:flex;gap:4px;margin-bottom:16px;}
+.stab{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px 6px 0 0;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
+.stab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.stab:hover{background:var(--border);}
+
+/* View Toggle */
+.view-toggle{display:flex;gap:4px;margin-bottom:16px;}
+.vtbtn{padding:8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:9pt;font-weight:600;color:var(--text-light);}
+.vtbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* Saved Flash */
+.saved-flash{position:fixed;top:20px;right:20px;background:#10B981;color:#fff;padding:12px 24px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:1000;animation:slideIn 0.3s;}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0;}to{transform:translateX(0);opacity:1;}}
 </style>
 </head>
 <body>
 
-<div id="splash">
-  <div class="splash-card">
-    <div style="font-size:44px;margin-bottom:16px;">📋</div>
-    <h1>Project<span style="color:var(--accent)">Tracker</span></h1>
-    <p>Firebase Demo - Real-time Collaboration</p>
-    
-    <div id="auth-loading" style="display:none;padding:20px;color:var(--muted);">
-      <div style="font-size:32px;margin-bottom:10px;">⏳</div>
-      Checking authentication...
-    </div>
-    
-    <div id="auth-signin" style="display:none;">
-      <div id="signin-form">
-        <input type="email" id="auth-email" placeholder="Work email" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
-        <input type="password" id="auth-password" placeholder="Password" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:10pt;font-family:inherit;" />
-        <button class="btn" onclick="signInWithEmail()" style="width:100%;padding:12px;font-size:11pt;margin-bottom:12px;">
-          Sign In
-        </button>
-        <div style="text-align:center;font-size:9pt;color:var(--muted);">
-          Don't have an account? <a href="#" onclick="showSignUp();return false;" style="color:var(--accent);font-weight:600;">Create one</a>
-        </div>
-      </div>
-      
-      <div id="signup-form" style="display:none;">
-        <input type="text" id="signup-name" placeholder="Your name" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
-        <input type="email" id="signup-email" placeholder="Work email" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:10px;font-size:10pt;font-family:inherit;" />
-        <input type="password" id="signup-password" placeholder="Password (min 6 characters)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:10pt;font-family:inherit;" />
-        <button class="btn" onclick="createAccount()" style="width:100%;padding:12px;font-size:11pt;margin-bottom:12px;">
-          Create Account
-        </button>
-        <div style="text-align:center;font-size:9pt;color:var(--muted);">
-          Already have an account? <a href="#" onclick="showSignIn();return false;" style="color:var(--accent);font-weight:600;">Sign in</a>
-        </div>
+<!-- Auth Screen -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-box">
+    <h1>Project Tracker</h1>
+    <p>Sign in with your Texas Children's Hospital email</p>
+    <div id="auth-error" class="auth-error" style="display:none;"></div>
+    <div id="signin-form">
+      <input type="email" id="signin-email" placeholder="Email" onkeypress="if(event.key==='Enter')signIn()"/>
+      <input type="password" id="signin-password" placeholder="Password" onkeypress="if(event.key==='Enter')signIn()"/>
+      <button onclick="signIn()">Sign In</button>
+      <div class="auth-toggle">
+        Don't have an account? <a onclick="showCreateAccount()">Create one</a>
       </div>
     </div>
-    
-    <div id="auth-error" class="config-box" style="display:none;">
-      <strong>⚠️ Firebase Not Configured</strong><br/>
-      Open this file in a text editor and add your Firebase config (instructions in the code, line ~200).
+    <div id="create-form" style="display:none;">
+      <input type="email" id="create-email" placeholder="Email (@texaschildrens.org)" onkeypress="if(event.key==='Enter')createAccount()"/>
+      <input type="password" id="create-password" placeholder="Password (min 6 characters)" onkeypress="if(event.key==='Enter')createAccount()"/>
+      <input type="text" id="create-name" placeholder="Your Name" onkeypress="if(event.key==='Enter')createAccount()"/>
+      <button onclick="createAccount()">Create Account</button>
+      <div class="auth-toggle">
+        Already have an account? <a onclick="showSignIn()">Sign in</a>
+      </div>
     </div>
   </div>
 </div>
 
-<div id="app" style="display:none;">
-  <header>
-    <h1>Project<span>Tracker</span> <span class="live-indicator"><span class="live-dot"></span>Live</span></h1>
+<!-- Main App -->
+<div id="app-container" class="app-container">
+  <div class="top-bar">
+    <h1>🎯 Project Tracker</h1>
     <div class="user-info">
-      <img id="user-photo" class="user-photo" src="" alt=""/>
-      <span id="user-name"></span>
+      <span id="user-display">Loading...</span>
+      <button onclick="signOut()">Sign Out</button>
     </div>
-    <button class="btn btn-s" onclick="signOut()">Sign Out</button>
-  </header>
-
-  <div class="add-section">
-    <h3>➕ Add Project</h3>
-    <div class="form-row">
-      <input type="text" id="new-name" placeholder="Project name" />
-      <select id="new-service">
-        <option value="General">General</option>
-        <option value="LSO">LSO</option>
-        <option value="NMG">NMG</option>
-        <option value="NRM">NRM</option>
-        <option value="SMA">SMA</option>
-        <option value="THR">THR</option>
-      </select>
-      <select id="new-status">
-        <option value="pending">Pending</option>
-        <option value="active">Active</option>
-        <option value="completed">Completed</option>
-      </select>
-    </div>
-    <button class="btn" onclick="addProject()">Add Project</button>
   </div>
 
-  <div class="projects-list" id="projects-list">
-    <div class="no-projects">No projects yet. Add one above!</div>
+  <div class="nav">
+    <button id="tab-board" class="active" onclick="showTab('board')">Board</button>
+    <button id="tab-service" onclick="showTab('service')">Services</button>
+    <button id="tab-submit" onclick="showTab('submit')">+ New Project</button>
+  </div>
+
+  <!-- Board Panel -->
+  <div class="panel active" id="panel-board">
+    <div class="dash-strip" id="dash-strip">
+      <div class="dash-stat"><div class="ds-val" id="ds-total">0</div><div class="ds-lbl">Total</div></div>
+      <div class="dash-stat ds-warn"><div class="ds-val" id="ds-pending">0</div><div class="ds-lbl">Pending</div></div>
+      <div class="dash-stat ds-green"><div class="ds-val" id="ds-active">0</div><div class="ds-lbl">Active</div></div>
+      <div class="dash-stat ds-blue"><div class="ds-val" id="ds-completed">0</div><div class="ds-lbl">Completed</div></div>
+      <div class="dash-divider"></div>
+      <div class="dash-stat ds-high"><div class="ds-val" id="ds-high">0</div><div class="ds-lbl">High Priority</div></div>
+      <div class="dash-stat ds-warn"><div class="ds-val" id="ds-overdue">0</div><div class="ds-lbl">Overdue</div></div>
+      <div class="dash-stat ds-warn"><div class="ds-val" id="ds-duesoon">0</div><div class="ds-lbl">Due Soon</div></div>
+      <div class="dash-divider"></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-General">0</div><div class="ds-lbl">General</div></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-LSO">0</div><div class="ds-lbl">LSO</div></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-NMG">0</div><div class="ds-lbl">NMG</div></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-NRM">0</div><div class="ds-lbl">NRM</div></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-SMA">0</div><div class="ds-lbl">SMA</div></div>
+      <div class="dash-stat"><div class="ds-val" id="ds-svc-THR">0</div><div class="ds-lbl">THR</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="si">🔍</span><input type="text" id="b-search" placeholder="Search all projects…" oninput="renderBoard()"/></div>
+      <select class="fsel" id="b-svc" onchange="renderBoard()">
+        <option value="">All Services</option>
+        <option>General</option><option>LSO</option><option>NMG</option><option>NRM</option><option>SMA</option><option>THR</option>
+      </select>
+      <select class="fsel" id="b-pri" onchange="renderBoard()">
+        <option value="">All Priorities</option>
+        <option>High</option><option>Medium</option><option>Low</option>
+      </select>
+      <input type="text" class="fsel" id="b-tag" placeholder="Filter by tag…" oninput="renderBoard()" style="min-width:130px;"/>
+      <select class="fsel" id="b-assigned" onchange="renderBoard()"><option value="">All Assignees</option></select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:9pt;cursor:pointer;">
+        <input type="checkbox" id="b-show-archived" onchange="renderBoard()" style="cursor:pointer;"/> Show Archived
+      </label>
+    </div>
+    <div class="board">
+      <div class="col col-pend" ondragover="onDragOver(event,'pending')" ondrop="onDrop(event,'pending')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🟡 Pending <span class="cc" id="cc-pending">0</span></div>
+        <div class="col-cards" id="cards-pending"></div>
+      </div>
+      <div class="col col-actv" ondragover="onDragOver(event,'active')" ondrop="onDrop(event,'active')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🟢 Active <span class="cc" id="cc-active">0</span></div>
+        <div class="col-cards" id="cards-active"></div>
+      </div>
+      <div class="col col-comp" ondragover="onDragOver(event,'completed')" ondrop="onDrop(event,'completed')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🔵 Completed <span class="cc" id="cc-completed">0</span></div>
+        <div class="col-cards" id="cards-completed"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Service Panel -->
+  <div class="panel" id="panel-service">
+    <div class="service-nav">
+      <button class="stab" id="tab-General" onclick="showSvcTab('General')">General</button>
+      <button class="stab" id="tab-LSO" onclick="showSvcTab('LSO')">LSO</button>
+      <button class="stab" id="tab-NMG" onclick="showSvcTab('NMG')">NMG</button>
+      <button class="stab" id="tab-NRM" onclick="showSvcTab('NRM')">NRM</button>
+      <button class="stab" id="tab-SMA" onclick="showSvcTab('SMA')">SMA</button>
+      <button class="stab" id="tab-THR" onclick="showSvcTab('THR')">THR</button>
+    </div>
+    <div class="toolbar">
+      <div class="search-wrap"><span class="si">🔍</span><input type="text" id="s-search" placeholder="Search…" oninput="renderSvc()"/></div>
+      <select class="fsel" id="s-pri" onchange="renderSvc()">
+        <option value="">All Priorities</option>
+        <option>High</option><option>Medium</option><option>Low</option>
+      </select>
+      <select class="fsel" id="s-diff" onchange="renderSvc()">
+        <option value="">All Difficulty</option>
+        <option>Easy</option><option>Medium</option><option>Hard</option>
+      </select>
+      <input type="text" class="fsel" id="s-tag" placeholder="Filter by tag…" oninput="renderSvc()" style="min-width:130px;"/>
+      <select class="fsel" id="s-assigned" onchange="renderSvc()"><option value="">All Assignees</option></select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:9pt;cursor:pointer;">
+        <input type="checkbox" id="s-show-archived" onchange="renderSvc()" style="cursor:pointer;"/> Show Archived
+      </label>
+      <select class="fsel" id="s-sort" onchange="renderSvc()">
+        <option value="createdAt-desc">Newest First</option>
+        <option value="createdAt-asc">Oldest First</option>
+        <option value="priority-asc">Priority</option>
+        <option value="status-asc">Status</option>
+        <option value="dueDate-asc">Due Date</option>
+      </select>
+    </div>
+    <div class="view-toggle">
+      <button class="vtbtn" id="vt-board" onclick="setView('board')">⊞ Board</button>
+      <button class="vtbtn active" id="vt-table" onclick="setView('table')">≡ Table</button>
+    </div>
+    <div id="svc-content"></div>
+  </div>
+
+  <!-- Submit Panel -->
+  <div class="panel" id="panel-submit">
+    <div class="submit-form">
+      <h2 style="margin-bottom:20px;">Submit New Project</h2>
+      <div class="ff">
+        <label>Service Line *</label>
+        <select id="sf-svc" required>
+          <option value="">Select service…</option>
+          <option>General</option><option>LSO</option><option>NMG</option><option>NRM</option><option>SMA</option><option>THR</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>Project Name *</label>
+        <input type="text" id="sf-proj" placeholder="Brief project title" required/>
+      </div>
+      <div class="ff">
+        <label>Submitter Name *</label>
+        <input type="text" id="sf-name" required/>
+      </div>
+      <div class="ff">
+        <label>Contact Info *</label>
+        <input type="text" id="sf-contact" placeholder="Email or phone" required/>
+      </div>
+      <div class="ff">
+        <label>Description</label>
+        <textarea id="sf-desc" placeholder="What is this project about?"></textarea>
+      </div>
+      <div class="ff">
+        <label>Priority *</label>
+        <select id="sf-pri" required>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>Due Date</label>
+        <input type="date" id="sf-due"/>
+      </div>
+      <button class="submit-btn" onclick="submitProject()">Submit Project</button>
+    </div>
+  </div>
+
+  <!-- Detail Panel (simplified - will be populated dynamically) -->
+  <div class="panel" id="panel-detail">
+    <div id="detail-content-wrapper"></div>
   </div>
 </div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-<script>
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔥 FIREBASE SETUP - FOLLOW THESE STEPS:
-// ═══════════════════════════════════════════════════════════════════════════
-// 
-// 1. Go to https://console.firebase.google.com/
-// 2. Click "Add project" (or use existing one)
-// 3. Name it (e.g., "project-tracker")
-// 4. Click "Add app" → choose Web (</> icon)
-// 5. Copy the config object and paste it below (replace the placeholder)
-// 
-// 6. Enable Firestore Database:
-//    - In left menu: Build → Firestore Database → Create database
-//    - Start in "test mode" (for now)
-//    - Choose a location
-// 
-// 7. Enable Google Authentication:
-//    - In left menu: Build → Authentication → Get started
-//    - Click "Sign-in method" tab
-//    - Enable "Google"
-//    - Click Save
-// 
-// 8. Save this file and open it in Chrome/Edge
-// 
-// ═══════════════════════════════════════════════════════════════════════════
-
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBk2WUU8jPgAze2J2Y8cnFiKUZN0MzPIFc",
   authDomain: "project-tracker-855a8.firebaseapp.com",
   projectId: "project-tracker-855a8",
   storageBucket: "project-tracker-855a8.firebasestorage.app",
-  messagingSenderId: "46582598296",
-  appId: "1:46582598296:web:ff818b885049366b3b9eed",
-  measurementId: "G-G15M136MTH"
+  messagingSenderId: "637990832163",
+  appId: "1:637990832163:web:8a3c02f9f7bcb70b5964da"
 };
 
-// Check if configured
-const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY_HERE";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-if (!isConfigured) {
-  document.getElementById('auth-error').style.display = 'block';
-  document.getElementById('auth-signin').style.display = 'none';
-} else {
-  document.getElementById('auth-loading').style.display = 'block';
-}
+// Global state
+let currentUser = null;
+let projects = [];
+let unsubscribe = null;
+let currentSvc = null;
+let currentView = 'table';
+let dragId = null;
+let currentProjId = null;
+let detailDirty = false;
+let detailStatus = 'pending';
+let stakeTags = [];
+let assigneeTags = [];
+let prevTab = 'board';
+let currentDetailTab = 'overview';
 
-// Initialize Firebase
-let auth, db, currentUser;
+// Make functions global
+window.showCreateAccount = showCreateAccount;
+window.showSignIn = showSignIn;
+window.createAccount = createAccount;
+window.signIn = signIn;
+window.signOut = signOutUser;
+window.showTab = showTab;
+window.showSvcTab = showSvcTab;
+window.setView = setView;
+window.renderBoard = renderBoard;
+window.renderSvc = renderSvc;
+window.submitProject = submitProject;
+window.onDragOver = onDragOver;
+window.onDragLeave = onDragLeave;
+window.onDrop = onDrop;
+window.openDetail = openDetail;
+window.goBack = goBack;
+window.saveDetail = saveDetail;
+window.markDirty = markDirty;
+window.setDetailStatus = setDetailStatus;
+window.toggleArchive = toggleArchive;
+window.deleteCurrentProject = deleteCurrentProject;
+window.addStakeTag = addStakeTag;
+window.removeStakeTag = removeStakeTag;
+window.addAssigneeTag = addAssigneeTag;
+window.removeAssigneeTag = removeAssigneeTag;
+window.updatePriorityBadge = updatePriorityBadge;
+window.showDetailTab = showDetailTab;
 
-if (isConfigured) {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db = firebase.firestore();
-    
-    // Listen for auth state
-    auth.onAuthStateChanged(user => {
-      document.getElementById('auth-loading').style.display = 'none';
-      if (user) {
-        currentUser = user;
-        document.getElementById('user-name').textContent = user.displayName || user.email;
-        document.getElementById('user-photo').src = user.photoURL || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M4 20c0-4 3-6 8-6s8 2 8 6"/></svg>';
-        document.getElementById('splash').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        loadProjects();
-      } else {
-        // User signed out
-        currentUser = null;
-        document.getElementById('app').style.display = 'none';
-        document.getElementById('splash').style.display = 'flex';
-        document.getElementById('auth-signin').style.display = 'block';
-        document.getElementById('signin-form').style.display = 'block';
-        document.getElementById('signup-form').style.display = 'none';
-      }
-    });
-  } catch (err) {
-    console.error('Firebase init error:', err);
-    document.getElementById('auth-error').textContent = 'Firebase error: ' + err.message;
-    document.getElementById('auth-error').style.display = 'block';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTHENTICATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-function showSignUp() {
+// Auth functions
+function showCreateAccount() {
   document.getElementById('signin-form').style.display = 'none';
-  document.getElementById('signup-form').style.display = 'block';
+  document.getElementById('create-form').style.display = 'block';
+  document.getElementById('auth-error').style.display = 'none';
 }
 
 function showSignIn() {
-  document.getElementById('signup-form').style.display = 'none';
   document.getElementById('signin-form').style.display = 'block';
+  document.getElementById('create-form').style.display = 'none';
+  document.getElementById('auth-error').style.display = 'none';
 }
 
-function signInWithEmail() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
+async function createAccount() {
+  const email = document.getElementById('create-email').value.trim();
+  const password = document.getElementById('create-password').value;
+  const name = document.getElementById('create-name').value.trim();
   
-  if (!email || !password) {
-    alert('Please enter email and password');
+  if (!email.endsWith('@texaschildrens.org')) {
+    showError('Please use your @texaschildrens.org email address');
     return;
   }
   
-  auth.signInWithEmailAndPassword(email, password)
-    .catch(err => {
-      alert('Sign-in error: ' + err.message);
+  if (password.length < 6) {
+    showError('Password must be at least 6 characters');
+    return;
+  }
+  
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, { displayName: name });
+    document.getElementById('create-email').value = '';
+    document.getElementById('create-password').value = '';
+    document.getElementById('create-name').value = '';
+  } catch (error) {
+    showError(error.message);
+  }
+}
+
+async function signIn() {
+  const email = document.getElementById('signin-email').value.trim();
+  const password = document.getElementById('signin-password').value;
+  
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    document.getElementById('signin-email').value = '';
+    document.getElementById('signin-password').value = '';
+  } catch (error) {
+    showError('Invalid email or password');
+  }
+}
+
+async function signOutUser() {
+  try {
+    if (unsubscribe) unsubscribe();
+    await fbSignOut(auth);
+    document.getElementById('app-container').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  } catch (error) {
+    console.error('Sign out error:', error);
+  }
+}
+
+function showError(msg) {
+  const errorDiv = document.getElementById('auth-error');
+  errorDiv.textContent = msg;
+  errorDiv.style.display = 'block';
+}
+
+// Auth state observer
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('user-display').textContent = user.displayName || user.email;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
+    setupFirestoreListener();
+  } else {
+    currentUser = null;
+    if (unsubscribe) unsubscribe();
+    projects = [];
+  }
+});
+
+// Firestore listener
+function setupFirestoreListener() {
+  const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+  unsubscribe = onSnapshot(q, (snapshot) => {
+    projects = [];
+    snapshot.forEach((doc) => {
+      projects.push({ id: doc.id, ...doc.data() });
     });
+    renderBoard();
+    if (currentSvc) renderSvc();
+  });
 }
 
-function createAccount() {
-  const name = document.getElementById('signup-name').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
+// Utility functions
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function esc(s) {
+  const div = document.createElement('div');
+  div.textContent = s || '';
+  return div.innerHTML;
+}
+
+// Navigation
+function showTab(tab) {
+  prevTab = tab;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'board') renderBoard();
+}
+
+function showSvcTab(svc) {
+  currentSvc = svc;
+  prevTab = 'service';
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + svc).classList.add('active');
+  populateAssigneeFilter();
+  renderSvc();
+  showTab('service');
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.vtbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('vt-' + v).classList.add('active');
+  renderSvc();
+}
+
+// Filtering
+function boardFiltered() {
+  const q = (document.getElementById('b-search')?.value || '').toLowerCase();
+  const svc = document.getElementById('b-svc')?.value || '';
+  const pri = document.getElementById('b-pri')?.value || '';
+  const assigned = document.getElementById('b-assigned')?.value || '';
+  const showArchived = document.getElementById('b-show-archived')?.checked || false;
+  return projects.filter(p => {
+    if (!showArchived && p.archived) return false;
+    if (q && ![p.name, p.submitter, p.description].some(s => (s || '').toLowerCase().includes(q))) return false;
+    if (svc && p.service !== svc) return false;
+    if (pri && p.priority !== pri) return false;
+    if (assigned && !(p.assignedTo || []).includes(assigned)) return false;
+    return true;
+  });
+}
+
+function svcFiltered() {
+  const q = (document.getElementById('s-search')?.value || '').toLowerCase();
+  const pri = document.getElementById('s-pri')?.value || '';
+  const diff = document.getElementById('s-diff')?.value || '';
+  const tag = (document.getElementById('s-tag')?.value || '').toLowerCase().trim();
+  const assigned = document.getElementById('s-assigned')?.value || '';
+  const showArchived = document.getElementById('s-show-archived')?.checked || false;
+  const sortVal = document.getElementById('s-sort')?.value || 'createdAt-desc';
+  const [sortKey, sortDir] = sortVal.split('-');
+  const priOrder = { High: 0, Medium: 1, Low: 2 };
+  const stsOrder = { active: 0, pending: 1, completed: 2 };
   
-  if (!name) {
-    alert('Please enter your name');
-    return;
-  }
-  if (!email) {
-    alert('Please enter your email');
-    return;
-  }
-  if (!password || password.length < 6) {
-    alert('Password must be at least 6 characters');
-    return;
-  }
+  return projects.filter(p => {
+    if (p.service !== currentSvc) return false;
+    if (!showArchived && p.archived) return false;
+    if (q && ![p.name, p.description, p.submitter].some(s => (s || '').toLowerCase().includes(q))) return false;
+    if (pri && p.priority !== pri) return false;
+    if (diff && p.difficulty !== diff) return false;
+    if (tag && !(p.stakeholderTags || []).some(t => t.toLowerCase().includes(tag))) return false;
+    if (assigned && !(p.assignedTo || []).includes(assigned)) return false;
+    return true;
+  }).sort((a, b) => {
+    let av = a[sortKey] || '', bv = b[sortKey] || '';
+    if (sortKey === 'priority') { av = priOrder[a.priority] ?? 1; bv = priOrder[b.priority] ?? 1; }
+    if (sortKey === 'status') { av = stsOrder[a.status] ?? 1; bv = stsOrder[b.status] ?? 1; }
+    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+}
+
+function populateBoardAssigneeFilter() {
+  const sel = document.getElementById('b-assigned');
+  if (!sel) return;
+  const assignees = new Set();
+  projects.forEach(p => {
+    (p.assignedTo || []).forEach(a => assignees.add(a));
+  });
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Assignees</option>';
+  Array.from(assignees).sort().forEach(a => {
+    sel.innerHTML += `<option value="${esc(a)}">${esc(a)}</option>`;
+  });
+  sel.value = current;
+}
+
+function populateAssigneeFilter() {
+  const sel = document.getElementById('s-assigned');
+  if (!sel) return;
+  const assignees = new Set();
+  projects.filter(p => p.service === currentSvc).forEach(p => {
+    (p.assignedTo || []).forEach(a => assignees.add(a));
+  });
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Assignees</option>';
+  Array.from(assignees).sort().forEach(a => {
+    sel.innerHTML += `<option value="${esc(a)}">${esc(a)}</option>`;
+  });
+  sel.value = current;
+}
+
+// Rendering
+function renderBoard() {
+  populateBoardAssigneeFilter();
+  ['pending', 'active', 'completed'].forEach(s => {
+    const list = boardFiltered().filter(p => p.status === s);
+    document.getElementById('cc-' + s).textContent = list.length;
+    const c = document.getElementById('cards-' + s);
+    if (!list.length) { c.innerHTML = '<div class="empty-col">No projects here</div>'; return; }
+    c.innerHTML = list.map(p => cardHTML(p, true)).join('');
+    c.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('dragstart', e => { dragId = el.dataset.id; el.classList.add('dragging'); });
+      el.addEventListener('dragend', e => el.classList.remove('dragging'));
+      el.addEventListener('click', () => openDetail(el.dataset.id));
+    });
+  });
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const ps = projects.filter(p => !p.archived);
+  const overdue = ps.filter(p => p.dueDate && new Date(p.dueDate + 'T00:00:00') < now && p.status !== 'completed').length;
+  const soon = ps.filter(p => {
+    if (!p.dueDate || p.status === 'completed') return false;
+    const d = new Date(p.dueDate + 'T00:00:00');
+    const diff = Math.round((d - now) / (1000 * 60 * 60 * 24));
+    return diff >= 0 && diff <= 7;
+  }).length;
+  document.getElementById('ds-total').textContent = ps.length;
+  document.getElementById('ds-pending').textContent = ps.filter(p => p.status === 'pending').length;
+  document.getElementById('ds-active').textContent = ps.filter(p => p.status === 'active').length;
+  document.getElementById('ds-completed').textContent = ps.filter(p => p.status === 'completed').length;
+  document.getElementById('ds-high').textContent = ps.filter(p => p.priority === 'High').length;
+  document.getElementById('ds-overdue').textContent = overdue;
+  document.getElementById('ds-duesoon').textContent = soon;
+  ['General', 'LSO', 'NMG', 'NRM', 'SMA', 'THR'].forEach(s => {
+    document.getElementById('ds-svc-' + s).textContent = ps.filter(p => p.service === s).length;
+  });
+}
+
+function renderSvc() {
+  const list = svcFiltered();
+  const content = document.getElementById('svc-content');
   
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(result => {
-      // Update user profile with name
-      return result.user.updateProfile({
-        displayName: name
+  if (currentView === 'table') {
+    content.innerHTML = `<table>
+      <thead><tr>
+        <th>Project</th><th>Description</th><th>Status</th><th>Priority</th><th>Difficulty</th>
+        <th>Assignees</th><th>Due Date</th><th>Created</th>
+      </tr></thead>
+      <tbody>${list.map(p => `<tr onclick="openDetail('${p.id}')" style="cursor:pointer;">
+        <td><strong>${esc(p.name)}</strong></td>
+        <td>${esc(p.description || '')}</td>
+        <td>${p.status || 'pending'}</td>
+        <td>${p.priority || ''}</td>
+        <td>${p.difficulty || ''}</td>
+        <td>${(p.assignedTo || []).map(a => `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-size:7pt;font-weight:600;">${esc(a)}</span>`).join(' ')}</td>
+        <td>${p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</td>
+        <td>${p.createdAt || ''}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } else {
+    const board = `<div class="board">
+      <div class="col" ondragover="onDragOver(event,'pending','svc')" ondrop="onDrop(event,'pending','svc')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🟡 Pending <span class="cc" id="scc-pending">0</span></div>
+        <div class="col-cards" id="scards-pending"></div>
+      </div>
+      <div class="col" ondragover="onDragOver(event,'active','svc')" ondrop="onDrop(event,'active','svc')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🟢 Active <span class="cc" id="scc-active">0</span></div>
+        <div class="col-cards" id="scards-active"></div>
+      </div>
+      <div class="col" ondragover="onDragOver(event,'completed','svc')" ondrop="onDrop(event,'completed','svc')" ondragleave="onDragLeave(event)">
+        <div class="col-hd">🔵 Completed <span class="cc" id="scc-completed">0</span></div>
+        <div class="col-cards" id="scards-completed"></div>
+      </div>
+    </div>`;
+    content.innerHTML = board;
+    
+    ['pending', 'active', 'completed'].forEach(s => {
+      const sl = list.filter(p => p.status === s);
+      document.getElementById('scc-' + s).textContent = sl.length;
+      const c = document.getElementById('scards-' + s);
+      if (!sl.length) { c.innerHTML = '<div class="empty-col">No projects here</div>'; return; }
+      c.innerHTML = sl.map(p => cardHTML(p, false)).join('');
+      c.querySelectorAll('.card').forEach(el => {
+        el.addEventListener('dragstart', e => { dragId = el.dataset.id; el.classList.add('dragging'); });
+        el.addEventListener('dragend', e => el.classList.remove('dragging'));
+        el.addEventListener('click', () => openDetail(el.dataset.id));
       });
-    })
-    .catch(err => {
-      alert('Account creation error: ' + err.message);
     });
-}
-
-async function signOut() {
-  // Unsubscribe from Firestore listener before signing out
-  if (unsubscribe) {
-    unsubscribe();
-    unsubscribe = null;
   }
-  // Small delay to ensure unsubscribe completes
-  await new Promise(resolve => setTimeout(resolve, 100));
-  await auth.signOut();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIRESTORE - REAL-TIME PROJECTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-let unsubscribe = null;
-
-function loadProjects() {
-  // Set up real-time listener
-  unsubscribe = db.collection('projects')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snapshot => {
-      const projects = [];
-      snapshot.forEach(doc => {
-        projects.push({ id: doc.id, ...doc.data() });
-      });
-      renderProjects(projects);
-    }, err => {
-      // Ignore permission errors during sign-out (expected)
-      if (err.code === 'permission-denied' && !currentUser) {
-        return;
-      }
-      console.error('Firestore error:', err);
-      alert('Database error: ' + err.message);
-    });
-}
-
-function renderProjects(projects) {
-  const list = document.getElementById('projects-list');
+function cardHTML(p, showSvc) {
+  const pc = { High: 'ph', Medium: 'pm', Low: 'pl' }[p.priority] || 'pm';
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const dueD = p.dueDate ? new Date(p.dueDate + 'T00:00:00') : null;
+  const diffDays = dueD ? Math.round((dueD - now) / (1000 * 60 * 60 * 24)) : null;
+  const dueBadge = dueD ? (diffDays < 0 ? '<span style="color:#fff;background:var(--high);font-size:7pt;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px;">OVERDUE</span>' : diffDays <= 7 ? '<span style="color:#fff;background:#F59E0B;font-size:7pt;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px;">Due Soon</span>' : '') : '';
+  const due = p.dueDate ? new Date(p.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const started = p.startDate ? new Date(p.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const completed = p.completedAt ? new Date(p.completedAt + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const assignees = (p.assignedTo || []).slice(0, 2).map(a => `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">👤 ${esc(a)}</span>`).join('');
+  const moreAssigned = (p.assignedTo || []).length > 2 ? `<span class="tag" style="background:#F3E8FF;color:#6B21A8;font-weight:600;">+${(p.assignedTo || []).length - 2}</span>` : '';
+  const archivedStyle = p.archived ? 'opacity:0.5;border-left:3px solid #6B7280;' : '';
+  const archivedBadge = p.archived ? '<span style="color:#fff;background:#6B7280;font-size:7pt;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px;">📦 ARCHIVED</span>' : '';
   
-  if (!projects.length) {
-    list.innerHTML = '<div class="no-projects">No projects yet. Add one above!</div>';
+  return `<div class="card ${pc}" draggable="true" data-id="${p.id}" style="${archivedStyle}">
+    <div class="card-title">${esc(p.name)}${dueBadge}${archivedBadge}</div>
+    ${p.description ? `<div class="card-desc">${esc(p.description)}</div>` : ''}
+    <div class="card-tags">
+      ${showSvc && p.service ? `<span class="tag tag-svc">${esc(p.service)}</span>` : ''}
+      <span class="tag tag-${(p.priority || 'medium').toLowerCase()}">${p.priority || ''}</span>
+      ${p.difficulty ? `<span class="tag tag-diff">${p.difficulty}</span>` : ''}
+      ${p.year ? `<span class="tag tag-year">${p.year}</span>` : ''}
+      ${(p.stakeholderTags || []).slice(0, 2).map(t => `<span class="tag tag-stake">${esc(t)}</span>`).join('')}
+    </div>
+    ${assignees || moreAssigned ? `<div style="margin-top:4px;">${assignees}${moreAssigned}</div>` : ''}
+    ${started || completed || p.submitter ? `<div class="card-sub">
+      ${p.submitter ? `by ${esc(p.submitter)}` : ''}
+      ${started ? ` · 🟢 ${started}` : ''}
+      ${completed ? ` · ✅ ${completed}` : ''}
+      ${due && !completed ? ' · 📅 ' + due : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+// Drag and drop
+function onDragOver(e, s, scope) {
+  e.preventDefault();
+  const pfx = scope === 'svc' ? 'scards-' : 'cards-';
+  document.querySelectorAll('.col-cards').forEach(c => c.classList.remove('drag-over'));
+  document.getElementById(pfx + s).classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    document.querySelectorAll('.col-cards').forEach(c => c.classList.remove('drag-over'));
+  }
+}
+
+async function onDrop(e, s, scope) {
+  e.preventDefault();
+  document.querySelectorAll('.col-cards').forEach(c => c.classList.remove('drag-over'));
+  if (!dragId) return;
+  
+  const p = projects.find(x => x.id === dragId);
+  if (p) {
+    const oldStatus = p.status;
+    const updates = { status: s, lastModifiedBy: { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName || currentUser.email } };
+    
+    if (s === 'active' && oldStatus !== 'active' && !p.startDate) updates.startDate = today();
+    if (s === 'completed' && !p.completedAt) updates.completedAt = today();
+    if (s !== 'completed' && oldStatus === 'completed') updates.completedAt = null;
+    
+    await updateDoc(doc(db, 'projects', dragId), updates);
+  }
+  dragId = null;
+}
+
+// Project submission
+async function submitProject() {
+  const svc = document.getElementById('sf-svc').value;
+  const proj = document.getElementById('sf-proj').value.trim();
+  const name = document.getElementById('sf-name').value.trim();
+  const contact = document.getElementById('sf-contact').value.trim();
+  const desc = document.getElementById('sf-desc').value.trim();
+  const pri = document.getElementById('sf-pri').value;
+  const due = document.getElementById('sf-due').value;
+  
+  if (!svc || !proj || !name || !contact) {
+    alert('Please fill in all required fields');
     return;
   }
   
-  list.innerHTML = projects.map(p => `
-    <div class="project-item">
-      <div style="flex:1;">
-        <div class="project-name">${esc(p.name)}</div>
-        <div class="project-meta">
-          <span class="service-tag">${esc(p.service)}</span>
-          <span class="status-badge status-${p.status}">${cap(p.status)}</span>
-          <span style="opacity:.6;">Added by ${esc(p.createdBy)}</span>
+  const newProject = {
+    service: svc,
+    name: proj,
+    submitter: name,
+    submitterContact: contact,
+    description: desc,
+    priority: pri,
+    submissionPriority: pri,
+    difficulty: '',
+    dueDate: due,
+    status: 'pending',
+    year: new Date().getFullYear(),
+    stakeholderTags: [],
+    assignedTo: [],
+    startDate: null,
+    archived: false,
+    taskGoal: '',
+    desiredOutcome: '',
+    overviewStakeholders: '',
+    affectedProcesses: '',
+    literatureReview: '',
+    stepsProcesses: '',
+    limitations: '',
+    createdAt: today(),
+    completedAt: null,
+    lastUpdated: null,
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    },
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  await addDoc(collection(db, 'projects'), newProject);
+  
+  // Clear form
+  document.getElementById('sf-svc').value = '';
+  document.getElementById('sf-proj').value = '';
+  document.getElementById('sf-name').value = '';
+  document.getElementById('sf-contact').value = '';
+  document.getElementById('sf-desc').value = '';
+  document.getElementById('sf-pri').value = 'Medium';
+  document.getElementById('sf-due').value = '';
+  
+  showTab('board');
+}
+
+// Detail view (simplified - just basic fields for now)
+function openDetail(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  
+  currentProjId = id;
+  detailDirty = false;
+  assigneeTags = p.assignedTo || [];
+  stakeTags = p.stakeholderTags || [];
+  setDetailStatus(p.status || 'pending', false);
+  
+  const formatDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  
+  const detailHTML = `
+    <div class="detail-header">
+      <button class="back-btn" onclick="goBack()">← Back</button>
+      <input class="detail-title" id="d-title" value="${esc(p.name || 'Untitled')}" oninput="markDirty()" placeholder="Project name…"/>
+      <span class="detail-svc-badge">${esc(p.service || '—')}</span>
+      <button class="btn-sm" id="archive-btn" onclick="toggleArchive()" style="background:#6B7280;color:#fff;border:none;">📦 Archive</button>
+      <button class="btn-p btn-sm" onclick="saveDetail()">Save All</button>
+      <button class="btn-d" onclick="deleteCurrentProject()">Delete</button>
+    </div>
+    
+    <div class="tags-row">
+      <div class="tag-group">
+        <label>Status</label>
+        <div class="status-sel">
+          <button class="sts-btn pend" id="dsb-pend" onclick="setDetailStatus('pending')">🟡 Pending</button>
+          <button class="sts-btn actv" id="dsb-actv" onclick="setDetailStatus('active')">🟢 Active</button>
+          <button class="sts-btn comp" id="dsb-comp" onclick="setDetailStatus('completed')">🔵 Completed</button>
         </div>
       </div>
-      <button class="del-btn" onclick="deleteProject('${p.id}')" title="Delete">✕</button>
+      <div class="tag-group">
+        <label>Priority</label>
+        <div class="pri-sel">
+          <button class="pri-badge High" onclick="updatePriorityBadge('High')">High</button>
+          <button class="pri-badge Medium" onclick="updatePriorityBadge('Medium')">Medium</button>
+          <button class="pri-badge Low" onclick="updatePriorityBadge('Low')">Low</button>
+        </div>
+      </div>
     </div>
-  `).join('');
-}
-
-function addProject() {
-  const name = document.getElementById('new-name').value.trim();
-  const service = document.getElementById('new-service').value;
-  const status = document.getElementById('new-status').value;
+    
+    <div class="detail-tabs">
+      <button class="dtab active" onclick="showDetailTab('overview')">Overview</button>
+      <button class="dtab" onclick="showDetailTab('outline')">Outline</button>
+    </div>
+    
+    <div class="detail-content active" id="dtab-overview">
+      <div class="frow">
+        <div class="ff"><label>Task/Goal</label><textarea id="d-taskgoal" oninput="markDirty()">${esc(p.taskGoal || '')}</textarea></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Desired Outcome</label><textarea id="d-outcome" oninput="markDirty()">${esc(p.desiredOutcome || '')}</textarea></div>
+      </div>
+      <div class="frow s1">
+        <div class="ff"><label>Brief Description</label><textarea id="d-desc" rows="2" oninput="markDirty()">${esc(p.description || '')}</textarea></div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Start Date</label>
+          <input type="text" id="d-startdate" readonly style="background:#f5f5f5;cursor:not-allowed;" value="${formatDate(p.startDate) || 'Not started yet'}"/>
+        </div>
+        <div class="ff"><label>Completed Date</label>
+          <input type="text" id="d-completeddate" readonly style="background:#f5f5f5;cursor:not-allowed;" value="${formatDate(p.completedAt) || 'Not completed yet'}"/>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="ff">
+          <label>Assigned To</label>
+          <div id="d-assigned-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            <input type="text" class="tag-input" id="d-assigned-input" placeholder="Type name and press Enter" style="width:160px;" onkeydown="addAssigneeTag(event)"/>
+          </div>
+        </div>
+        <div class="ff">
+          <label>Stakeholder Tags</label>
+          <div id="d-stake-wrap" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            <input type="text" class="tag-input" id="d-stake-input" placeholder="Type tag and press Enter" style="width:160px;" onkeydown="addStakeTag(event)"/>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="ff"><label>Difficulty</label>
+          <select id="ov-difficulty" onchange="markDirty()">
+            <option value="">—</option>
+            <option ${p.difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
+            <option ${p.difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
+            <option ${p.difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
+          </select>
+        </div>
+        <div class="ff"><label>Year</label>
+          <input type="number" id="d-year" value="${p.year || new Date().getFullYear()}" oninput="markDirty()"/>
+        </div>
+      </div>
+    </div>
+    
+    <div class="detail-content" id="dtab-outline">
+      <div class="frow s1"><div class="ff"><label>Affected Processes</label><textarea id="d-processes" rows="3" oninput="markDirty()">${esc(p.affectedProcesses || '')}</textarea></div></div>
+      <div class="frow s1"><div class="ff"><label>Literature Review</label><textarea id="d-litreview" rows="3" oninput="markDirty()">${esc(p.literatureReview || '')}</textarea></div></div>
+      <div class="frow s1"><div class="ff"><label>Steps/Processes</label><textarea id="d-steps" rows="3" oninput="markDirty()">${esc(p.stepsProcesses || '')}</textarea></div></div>
+      <div class="frow s1"><div class="ff"><label>Limitations</label><textarea id="d-limitations" rows="3" oninput="markDirty()">${esc(p.limitations || '')}</textarea></div></div>
+    </div>
+  `;
   
-  if (!name) {
-    alert('Please enter a project name');
-    return;
+  document.getElementById('detail-content-wrapper').innerHTML = detailHTML;
+  
+  // Update priority badges
+  updatePriorityBadge(p.priority || 'Medium', false);
+  
+  // Update archive button
+  const archiveBtn = document.getElementById('archive-btn');
+  if (p.archived) {
+    archiveBtn.textContent = '📦 Unarchive';
+    archiveBtn.style.background = '#10B981';
+  } else {
+    archiveBtn.textContent = '📦 Archive';
+    archiveBtn.style.background = '#6B7280';
   }
   
-  db.collection('projects').add({
-    name,
-    service,
-    status,
-    createdBy: currentUser.displayName || currentUser.email,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(() => {
-    document.getElementById('new-name').value = '';
-    document.getElementById('new-name').focus();
-  }).catch(err => {
-    alert('Error adding project: ' + err.message);
+  // Render tags
+  renderAssigneeTags(assigneeTags);
+  renderStakeTags(stakeTags);
+  
+  showTab('detail');
+}
+
+function showDetailTab(tab) {
+  currentDetailTab = tab;
+  document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.detail-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.dtab[onclick="showDetailTab('${tab}')"]`).classList.add('active');
+  document.getElementById('dtab-' + tab).classList.add('active');
+}
+
+function goBack() {
+  if (detailDirty && !confirm('You have unsaved changes. Leave without saving?')) return;
+  if (prevTab === 'service' && currentSvc) showSvcTab(currentSvc);
+  else showTab(prevTab || 'board');
+}
+
+function markDirty() {
+  detailDirty = true;
+}
+
+function setDetailStatus(s, dirty = true) {
+  detailStatus = s;
+  if (dirty) markDirty();
+  ['pend', 'actv', 'comp'].forEach(x => document.getElementById('dsb-' + x).classList.remove('sel'));
+  const map = { pending: 'pend', active: 'actv', completed: 'comp' };
+  document.getElementById('dsb-' + map[s]).classList.add('sel');
+}
+
+function updatePriorityBadge(pri, dirty = true) {
+  if (dirty) markDirty();
+  document.querySelectorAll('.pri-badge').forEach(b => b.classList.remove('sel'));
+  document.querySelector(`.pri-badge.${pri}`).classList.add('sel');
+}
+
+async function saveDetail() {
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const oldStatus = p.status;
+  const updates = {
+    name: document.getElementById('d-title').value.trim() || 'Untitled',
+    status: detailStatus,
+    priority: document.querySelector('.pri-badge.sel').textContent,
+    difficulty: document.getElementById('ov-difficulty').value,
+    year: parseInt(document.getElementById('d-year').value) || new Date().getFullYear(),
+    taskGoal: document.getElementById('d-taskgoal').value,
+    desiredOutcome: document.getElementById('d-outcome').value,
+    description: document.getElementById('d-desc').value,
+    affectedProcesses: document.getElementById('d-processes').value,
+    literatureReview: document.getElementById('d-litreview').value,
+    stepsProcesses: document.getElementById('d-steps').value,
+    limitations: document.getElementById('d-limitations').value,
+    assignedTo: assigneeTags,
+    stakeholderTags: stakeTags,
+    lastUpdated: today(),
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  if (updates.status === 'active' && oldStatus !== 'active' && !p.startDate) updates.startDate = today();
+  if (updates.status === 'completed' && !p.completedAt) updates.completedAt = today();
+  if (updates.status !== 'completed' && oldStatus === 'completed') updates.completedAt = null;
+  
+  await updateDoc(doc(db, 'projects', currentProjId), updates);
+  detailDirty = false;
+  showSavedFlash();
+}
+
+async function toggleArchive() {
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    archived: !p.archived,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
   });
 }
 
-function deleteProject(id) {
-  if (!confirm('Delete this project?')) return;
-  db.collection('projects').doc(id).delete().catch(err => {
-    alert('Error deleting: ' + err.message);
-  });
+async function deleteCurrentProject() {
+  if (!confirm('Delete this project and all its data?')) return;
+  await deleteDoc(doc(db, 'projects', currentProjId));
+  if (prevTab === 'service' && currentSvc) showSvcTab(currentSvc);
+  else showTab(prevTab || 'board');
 }
 
-// Helpers
-function esc(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+// Tag management
+function addStakeTag(e) {
+  if (e.key !== 'Enter') return;
+  const val = e.target.value.trim();
+  if (!val) return;
+  stakeTags.push(val);
+  e.target.value = '';
+  renderStakeTags(stakeTags);
+  markDirty();
+}
 
-// Cleanup on close
-window.addEventListener('beforeunload', () => {
-  if (unsubscribe) unsubscribe();
-});
+function removeStakeTag(i) {
+  stakeTags.splice(i, 1);
+  renderStakeTags(stakeTags);
+  markDirty();
+}
+
+function renderStakeTags(tags) {
+  const wrap = document.getElementById('d-stake-wrap');
+  const inp = document.getElementById('d-stake-input');
+  wrap.innerHTML = '';
+  tags.forEach((t, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'stake-tag';
+    tag.innerHTML = `${esc(t)} <button onclick="removeStakeTag(${i})">×</button>`;
+    wrap.appendChild(tag);
+  });
+  wrap.appendChild(inp);
+}
+
+function addAssigneeTag(e) {
+  if (e.key !== 'Enter') return;
+  const val = e.target.value.trim();
+  if (!val) return;
+  assigneeTags.push(val);
+  e.target.value = '';
+  renderAssigneeTags(assigneeTags);
+  markDirty();
+}
+
+function removeAssigneeTag(i) {
+  assigneeTags.splice(i, 1);
+  renderAssigneeTags(assigneeTags);
+  markDirty();
+}
+
+function renderAssigneeTags(tags) {
+  const wrap = document.getElementById('d-assigned-wrap');
+  const inp = document.getElementById('d-assigned-input');
+  wrap.innerHTML = '';
+  tags.forEach((t, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'stake-tag';
+    tag.style.background = '#F3E8FF';
+    tag.style.borderColor = '#C084FC';
+    tag.style.color = '#6B21A8';
+    tag.innerHTML = `${esc(t)} <button onclick="removeAssigneeTag(${i})">×</button>`;
+    wrap.appendChild(tag);
+  });
+  wrap.appendChild(inp);
+}
+
+function showSavedFlash() {
+  const flash = document.createElement('div');
+  flash.className = 'saved-flash';
+  flash.textContent = '✓ Saved';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 2000);
+}
+
 </script>
-
 </body>
 </html>
