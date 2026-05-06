@@ -242,6 +242,7 @@ tr:hover{background:#F9FAFB;}
   <div class="nav">
     <button id="tab-board" class="active" onclick="showTab('board')">Board</button>
     <button id="tab-service" onclick="showTab('service')">Services</button>
+    <button id="tab-updates" onclick="showTab('updates')">Updates</button>
     <button id="tab-submit" onclick="showTab('submit')">+ New Project</button>
   </div>
 
@@ -337,6 +338,67 @@ tr:hover{background:#F9FAFB;}
   </div>
 
   <!-- Submit Panel -->
+  <!-- Updates Panel -->
+  <div class="panel" id="panel-updates">
+    <div style="max-width:1200px;margin:0 auto;padding:20px;">
+      <h2 style="font-size:14pt;font-weight:700;margin-bottom:16px;">Project Update Log</h2>
+      
+      <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px;">
+        <h3 style="font-size:11pt;font-weight:700;margin-bottom:16px;">Log a New Update</h3>
+        <div class="frow">
+          <div class="ff">
+            <label>Project Name *</label>
+            <select id="u-proj-select">
+              <option value="">— Select Project —</option>
+            </select>
+          </div>
+          <div class="ff">
+            <label>Date *</label>
+            <input type="date" id="u-date" value="${today()}"/>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="ff">
+            <label>Updated By *</label>
+            <input type="text" id="u-by" placeholder="Your name"/>
+          </div>
+        </div>
+        <div class="ff">
+          <label>What Changed *</label>
+          <textarea id="u-desc" rows="2" placeholder="Describe the update…"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="btn-p" onclick="addUpdate()">Save Update</button>
+          <span id="upd-saved" style="color:#10B981;font-size:9pt;font-weight:600;display:none;">✓ Saved!</span>
+        </div>
+      </div>
+      
+      <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;">
+        <label style="font-size:9pt;font-weight:600;">Search</label>
+        <input type="text" id="u-filter" placeholder="Search by project, service, or person…" oninput="window.renderUpdates()" style="flex:1;max-width:400px;padding:8px;border:1px solid var(--border);border-radius:6px;"/>
+        <button class="btn-s btn-sm" onclick="document.getElementById('u-filter').value='';window.renderUpdates();">Clear</button>
+      </div>
+      
+      <div style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#F3F4F6;">
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;">Date</th>
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;">Project</th>
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;">Service</th>
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;">Updated By</th>
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;">Description</th>
+              <th style="padding:12px;text-align:left;font-size:8pt;font-weight:700;color:#6B7280;text-transform:uppercase;"></th>
+            </tr>
+          </thead>
+          <tbody id="utbody"></tbody>
+        </table>
+        <div id="no-upd" style="display:none;padding:40px;text-align:center;color:#6B7280;">No updates for this selection.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Panel -->
   <div class="panel" id="panel-submit">
     <div class="submit-form">
       <h2 style="margin-bottom:20px;">Submit New Project</h2>
@@ -388,7 +450,7 @@ tr:hover{background:#F9FAFB;}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config
 const firebaseConfig = {
@@ -546,6 +608,7 @@ function setupFirestoreListener() {
     });
     renderBoard();
     if (currentSvc) renderSvc();
+    populateProjectList(); // Update the updates dropdown
   });
 }
 
@@ -576,6 +639,7 @@ function showTab(tab) {
     document.getElementById('tab-' + tab).classList.add('active');
   }
   if (tab === 'board') renderBoard();
+  if (tab === 'updates') loadUpdates();
 }
 
 function showSvcTab(svc) {
@@ -942,17 +1006,17 @@ function openDetail(id) {
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Year</label>
-          <input type="number" id="d-year" value="${p.year || new Date().getFullYear()}" oninput="markDirty();updateRibbon()" style="width:70px;padding:4px 6px;background:var(--input);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9pt;"/>
+          <input type="number" id="d-year" value="${p.year || new Date().getFullYear()}" oninput="markDirty();updateRibbonDisplay()" style="width:70px;padding:4px 6px;background:var(--input);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9pt;"/>
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Priority</label>
+          <span id="ribbon-priority" class="tag tag-${(p.priority || 'medium').toLowerCase()}">${p.priority || '—'}</span>
         </div>
         
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:8pt;font-weight:600;color:var(--text-light);">Difficulty</label>
-          <select id="ov-difficulty" onchange="markDirty();updateRibbon()" style="padding:4px 6px;background:var(--input);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9pt;">
-            <option value="">—</option>
-            <option ${p.difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
-            <option ${p.difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
-            <option ${p.difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
-          </select>
+          <span id="ribbon-difficulty" class="tag tag-diff">${p.difficulty || '—'}</span>
         </div>
         
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px;">
@@ -1034,11 +1098,29 @@ function openDetail(id) {
         <div class="ff"><label>Brief Description</label><textarea id="d-desc" rows="2" oninput="markDirty()">${esc(p.description || '')}</textarea></div>
       </div>
       <div class="frow">
+        <div class="ff"><label>Priority</label>
+          <select id="ov-priority" onchange="markDirty();updateRibbonDisplay()">
+            <option value="">—</option>
+            <option ${p.priority === 'High' ? 'selected' : ''}>High</option>
+            <option ${p.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+            <option ${p.priority === 'Low' ? 'selected' : ''}>Low</option>
+          </select>
+        </div>
+        <div class="ff"><label>Difficulty</label>
+          <select id="ov-difficulty" onchange="markDirty();updateRibbonDisplay()">
+            <option value="">—</option>
+            <option ${p.difficulty === 'Easy' ? 'selected' : ''}>Easy</option>
+            <option ${p.difficulty === 'Medium' ? 'selected' : ''}>Medium</option>
+            <option ${p.difficulty === 'Hard' ? 'selected' : ''}>Hard</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
         <div class="ff"><label>Start Date</label>
-          <input type="text" id="d-startdate" readonly style="background:#2D3748;cursor:not-allowed;" value="${formatDate(p.startDate) || 'Not started yet'}"/>
+          <input type="text" id="d-startdate" readonly style="background:#F3F4F6;color:#6B7280;cursor:not-allowed;" value="${formatDate(p.startDate) || 'Not started yet'}"/>
         </div>
         <div class="ff"><label>Completed Date</label>
-          <input type="text" id="d-completeddate" readonly style="background:#2D3748;cursor:not-allowed;" value="${formatDate(p.completedAt) || 'Not completed yet'}"/>
+          <input type="text" id="d-completeddate" readonly style="background:#F3F4F6;color:#6B7280;cursor:not-allowed;" value="${formatDate(p.completedAt) || 'Not completed yet'}"/>
         </div>
       </div>
     </div>
@@ -1077,8 +1159,18 @@ function openDetail(id) {
     
     <div class="detail-content" id="dtab-minutes">
       <div style="margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+          <div>
+            <label style="font-size:8pt;font-weight:600;color:#6B7280;margin-bottom:4px;display:block;">Meeting Date</label>
+            <input type="date" id="minutes-date" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:9pt;background:#fff;color:#1F2937;"/>
+          </div>
+          <div>
+            <label style="font-size:8pt;font-weight:600;color:#6B7280;margin-bottom:4px;display:block;">Attendees (comma-separated)</label>
+            <input type="text" id="minutes-attendees" placeholder="John, Sarah, Mike..." style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:9pt;background:#fff;color:#1F2937;"/>
+          </div>
+        </div>
         <textarea id="minutes-input" placeholder="Type meeting minutes here..." style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:9pt;font-family:var(--font);margin-bottom:8px;background:#fff;color:#1F2937;resize:vertical;"></textarea>
-        <button onclick="const text=document.getElementById('minutes-input').value; if(text.trim()){addLogEntry('minutes',text); document.getElementById('minutes-input').value='';}" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Minute</button>
+        <button onclick="addMinuteEntry()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:9pt;">+ Add Minute</button>
       </div>
       <div id="minutes-log"></div>
     </div>
@@ -1136,14 +1228,32 @@ function openDetail(id) {
   renderGanttChart(); // Fire and forget - don't block
   
   // Update ribbon
-  updateRibbon();
+  updateRibbonDisplay();
   
   showTab('detail');
 }
 
-function updateRibbon() {
-  // Ribbon is now interactive with live inputs, no need to update display
+function updateRibbonDisplay() {
+  // Update the ribbon display badges when priority/difficulty change in Overview
+  const priority = document.getElementById('ov-priority')?.value || '—';
+  const difficulty = document.getElementById('ov-difficulty')?.value || '—';
+  
+  const priorityBadge = document.getElementById('ribbon-priority');
+  const difficultyBadge = document.getElementById('ribbon-difficulty');
+  
+  if (priorityBadge) {
+    priorityBadge.textContent = priority;
+    priorityBadge.className = 'tag tag-' + (priority.toLowerCase() || 'medium');
+  }
+  
+  if (difficultyBadge) {
+    difficultyBadge.textContent = difficulty;
+  }
 }
+
+// Make function globally accessible
+window.updateRibbonDisplay = updateRibbonDisplay;
+
 
 function showDetailTab(tab) {
   currentDetailTab = tab;
@@ -1185,7 +1295,7 @@ async function saveDetail() {
   const updates = {
     name: document.getElementById('d-title').value.trim() || 'Untitled',
     status: detailStatus,
-    priority: document.querySelector('.pri-badge.sel').textContent,
+    priority: document.getElementById('ov-priority').value,
     difficulty: document.getElementById('ov-difficulty').value,
     year: parseInt(document.getElementById('d-year').value) || new Date().getFullYear(),
     taskGoal: document.getElementById('d-taskgoal').value,
@@ -1258,14 +1368,14 @@ function addStakeTag(e) {
   e.target.value = '';
   renderStakeTags(stakeTags);
   markDirty();
-  updateRibbon();
+  updateRibbonDisplay();
 }
 
 function removeStakeTag(i) {
   stakeTags.splice(i, 1);
   renderStakeTags(stakeTags);
   markDirty();
-  updateRibbon();
+  updateRibbonDisplay();
 }
 
 function renderStakeTags(tags) {
@@ -1289,14 +1399,14 @@ function addAssigneeTag(e) {
   e.target.value = '';
   renderAssigneeTags(assigneeTags);
   markDirty();
-  updateRibbon();
+  updateRibbonDisplay();
 }
 
 function removeAssigneeTag(i) {
   assigneeTags.splice(i, 1);
   renderAssigneeTags(assigneeTags);
   markDirty();
-  updateRibbon();
+  updateRibbonDisplay();
 }
 
 function renderAssigneeTags(tags) {
@@ -1356,6 +1466,53 @@ async function addLogEntry(type, text) {
   renderLogEntries(type, entries);
 }
 
+async function addMinuteEntry() {
+  const text = document.getElementById('minutes-input').value;
+  const date = document.getElementById('minutes-date').value;
+  const attendees = document.getElementById('minutes-attendees').value;
+  
+  if (!text || !text.trim()) return;
+  
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const entry = {
+    id: 'log_' + Date.now(),
+    text: text.trim(),
+    meetingDate: date || null,
+    attendees: attendees ? attendees.split(',').map(a => a.trim()).filter(a => a) : [],
+    createdAt: today(),
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  const entries = p.minutes || [];
+  entries.push(entry);
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    minutes: entries,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+  
+  // Clear inputs
+  document.getElementById('minutes-input').value = '';
+  document.getElementById('minutes-date').value = '';
+  document.getElementById('minutes-attendees').value = '';
+  
+  renderLogEntries('minutes', entries);
+}
+
+// Make function globally accessible
+window.addMinuteEntry = addMinuteEntry;
+
+
 async function deleteLogEntry(type, id) {
   if (!confirm('Delete this entry?')) return;
   
@@ -1390,13 +1547,113 @@ function renderLogEntries(type, entries) {
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
         <div style="font-size:8pt;color:#6B7280;">
           ${e.createdBy?.displayName || e.createdBy?.email || 'Unknown'} · ${e.createdAt || '—'}
+          ${type === 'minutes' && e.meetingDate ? `<br><strong>Meeting Date:</strong> ${new Date(e.meetingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+          ${type === 'minutes' && e.attendees && e.attendees.length > 0 ? `<br><strong>Attendees:</strong> ${e.attendees.join(', ')}` : ''}
         </div>
         <button onclick="deleteLogEntry('${type}', '${e.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
       </div>
-      <div style="white-space:pre-wrap;color:#1F2937;">${esc(e.text)}</div>
+      <div style="white-space:pre-wrap;color:#1F2937;margin-bottom:${type === 'questions' ? '12px' : '0'};">${esc(e.text)}</div>
+      
+      ${type === 'questions' ? `
+        <div style="margin-top:8px;">
+          <button onclick="toggleReplyBox('${e.id}')" style="background:#6B7280;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:8pt;cursor:pointer;">Reply</button>
+        </div>
+        <div id="reply-box-${e.id}" style="display:none;margin-top:12px;padding:12px;background:#F9FAFB;border-radius:4px;">
+          <textarea id="reply-text-${e.id}" placeholder="Type your reply..." style="width:100%;min-height:60px;padding:6px;border:1px solid var(--border);border-radius:4px;font-size:9pt;margin-bottom:6px;resize:vertical;"></textarea>
+          <button onclick="addQuestionReply('${e.id}')" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;cursor:pointer;">Post Reply</button>
+        </div>
+        ${(e.replies || []).length > 0 ? `
+          <div style="margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
+            ${(e.replies || []).map(r => `
+              <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px;">
+                <div style="font-size:8pt;color:#6B7280;margin-bottom:6px;">
+                  ${r.createdBy?.displayName || r.createdBy?.email || 'Unknown'} · ${r.createdAt || '—'}
+                  <button onclick="deleteQuestionReply('${e.id}', '${r.id}')" style="float:right;background:#EF4444;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:7pt;cursor:pointer;">Delete</button>
+                </div>
+                <div style="white-space:pre-wrap;color:#1F2937;font-size:9pt;">${esc(r.text)}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      ` : ''}
     </div>
   `).join('');
 }
+
+function toggleReplyBox(questionId) {
+  const box = document.getElementById('reply-box-' + questionId);
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+async function addQuestionReply(questionId) {
+  const textarea = document.getElementById('reply-text-' + questionId);
+  const text = textarea.value;
+  if (!text || !text.trim()) return;
+  
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const question = (p.questions || []).find(q => q.id === questionId);
+  if (!question) return;
+  
+  if (!question.replies) question.replies = [];
+  
+  const reply = {
+    id: 'reply_' + Date.now(),
+    text: text.trim(),
+    createdAt: today(),
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  question.replies.push(reply);
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    questions: p.questions,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+  
+  textarea.value = '';
+  renderLogEntries('questions', p.questions);
+}
+
+async function deleteQuestionReply(questionId, replyId) {
+  if (!confirm('Delete this reply?')) return;
+  
+  const p = projects.find(x => x.id === currentProjId);
+  if (!p) return;
+  
+  const question = (p.questions || []).find(q => q.id === questionId);
+  if (!question) return;
+  
+  question.replies = (question.replies || []).filter(r => r.id !== replyId);
+  
+  await updateDoc(doc(db, 'projects', currentProjId), {
+    questions: p.questions,
+    lastModifiedBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  });
+  
+  renderLogEntries('questions', p.questions);
+}
+
+// Make functions globally accessible
+window.toggleReplyBox = toggleReplyBox;
+window.addQuestionReply = addQuestionReply;
+window.deleteQuestionReply = deleteQuestionReply;
+
 
 // ══════════════════════════════════════════════
 // GANTT CHART FUNCTIONS
@@ -1644,6 +1901,159 @@ async function saveGanttData() {
     }
   });
 }
+
+// Make Gantt functions globally accessible for onclick handlers
+window.addGanttTask = addGanttTask;
+window.deleteGanttTask = deleteGanttTask;
+window.renameGanttTask = renameGanttTask;
+window.ganttMouseDown = ganttMouseDown;
+window.saveGanttSettings = saveGanttSettings;
+window.renderGanttChart = renderGanttChart;
+
+// ══════════════════════════════════════════════
+// UPDATES FUNCTIONS
+// ══════════════════════════════════════════════
+
+async function addUpdate() {
+  const projectId = document.getElementById('u-proj-select').value;
+  const updateDate = document.getElementById('u-date').value;
+  const updatedBy = document.getElementById('u-by').value.trim();
+  const description = document.getElementById('u-desc').value.trim();
+  
+  if (!projectId || !updateDate || !updatedBy || !description) {
+    alert('Please fill in all required fields');
+    return;
+  }
+  
+  // Find the project
+  const project = projects.find(p => p.id === projectId);
+  if (!project) {
+    alert('Project not found.');
+    return;
+  }
+  
+  const update = {
+    id: 'upd_' + Date.now(),
+    projectId: project.id,
+    projectName: project.name,
+    service: project.service,
+    updatedBy: updatedBy,
+    description: description,
+    date: updateDate,
+    createdBy: {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName || currentUser.email
+    }
+  };
+  
+  // Add to Firestore updates collection
+  await addDoc(collection(db, 'updates'), update);
+  
+  // Clear form
+  document.getElementById('u-proj-select').value = '';
+  document.getElementById('u-date').value = today();
+  document.getElementById('u-by').value = '';
+  document.getElementById('u-desc').value = '';
+  
+  // Show saved message
+  const savedMsg = document.getElementById('upd-saved');
+  savedMsg.style.display = 'inline';
+  setTimeout(() => savedMsg.style.display = 'none', 2000);
+  
+  // Refresh updates list
+  loadUpdates();
+}
+
+async function loadUpdates() {
+  const updatesSnapshot = await getDocs(collection(db, 'updates'));
+  const updates = [];
+  updatesSnapshot.forEach(doc => {
+    updates.push({ id: doc.id, ...doc.data() });
+  });
+  
+  // Sort by date descending
+  updates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  
+  window.allUpdates = updates;
+  renderUpdates();
+  populateProjectList();
+}
+
+function populateProjectList() {
+  const select = document.getElementById('u-proj-select');
+  if (!select) return;
+  
+  // Keep the first "Select Project" option, add all projects
+  const options = projects
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    .map(p => `<option value="${p.id}">${esc(p.name)}</option>`)
+    .join('');
+  
+  select.innerHTML = '<option value="">— Select Project —</option>' + options;
+}
+
+function renderUpdates() {
+  const tbody = document.getElementById('utbody');
+  const noUpd = document.getElementById('no-upd');
+  if (!tbody) return;
+  
+  // Safety check - if allUpdates doesn't exist yet, show empty state
+  if (!window.allUpdates) {
+    tbody.innerHTML = '';
+    if (noUpd) noUpd.style.display = 'block';
+    return;
+  }
+  
+  const filter = (document.getElementById('u-filter')?.value || '').toLowerCase();
+  const updates = window.allUpdates.filter(u => {
+    if (!filter) return true;
+    return (u.projectName || '').toLowerCase().includes(filter) ||
+           (u.service || '').toLowerCase().includes(filter) ||
+           (u.updatedBy || '').toLowerCase().includes(filter);
+  });
+  
+  if (updates.length === 0) {
+    tbody.innerHTML = '';
+    if (noUpd) noUpd.style.display = 'block';
+    return;
+  }
+  
+  if (noUpd) noUpd.style.display = 'none';
+  
+  tbody.innerHTML = updates.map(u => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:12px;font-size:9pt;color:#1F2937;">${u.date || '—'}</td>
+      <td style="padding:12px;font-size:9pt;color:#1F2937;font-weight:600;">${esc(u.projectName || '')}</td>
+      <td style="padding:12px;font-size:9pt;"><span class="tag tag-svc">${esc(u.service || '')}</span></td>
+      <td style="padding:12px;font-size:9pt;color:#1F2937;">${esc(u.updatedBy || '')}</td>
+      <td style="padding:12px;font-size:9pt;color:#1F2937;">${esc(u.description || '')}</td>
+      <td style="padding:12px;">
+        <button onclick="window.deleteUpdate('${u.id}')" style="background:#EF4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:7pt;cursor:pointer;">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteUpdate(id) {
+  console.log('deleteUpdate called with id:', id);
+  if (!confirm('Delete this update?')) return;
+  
+  try {
+    console.log('Attempting to delete update from Firestore...');
+    await deleteDoc(doc(db, 'updates', id));
+    console.log('Delete successful, reloading updates...');
+    await loadUpdates();
+  } catch (error) {
+    console.error('Error deleting update:', error);
+    alert('Error deleting update: ' + error.message);
+  }
+}
+
+// Make functions globally accessible
+window.addUpdate = addUpdate;
+window.renderUpdates = renderUpdates;
+window.deleteUpdate = deleteUpdate;
 
 </script>
 </body>
