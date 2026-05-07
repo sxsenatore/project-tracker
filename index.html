@@ -548,6 +548,10 @@ window.toggleReplyForm = toggleReplyForm;
 window.cancelReply = cancelReply;
 window.toggleReplies = toggleReplies;
 window.addReply = addReply;
+window.toggleNestedReplyForm = toggleNestedReplyForm;
+window.cancelNestedReply = cancelNestedReply;
+window.toggleNestedReplies = toggleNestedReplies;
+window.addNestedReply = addNestedReply;
 window.deleteReply = deleteReply;
 window.submitProject = submitProject;
 window.onDragOver = onDragOver;
@@ -2741,7 +2745,7 @@ function renderUpdates() {
           
           <!-- Replies Section (hidden by default) -->
           <div id="${repliesId}" style="display:none;margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
-            ${renderReplies(u.replies || [])}
+            ${renderReplies(u.replies || [], u.id)}
           </div>
         </div>
       </td>
@@ -2767,26 +2771,34 @@ function cancelReply(updateId) {
 }
 
 function toggleReplies(updateId) {
-  const repliesDiv = document.getElementById(`replies-${updateId}`);
+  // Try both IDs (Updates tab uses 'replies-', Project Detail uses 'proj-replies-')
+  let repliesDiv = document.getElementById(`replies-${updateId}`);
+  if (!repliesDiv) repliesDiv = document.getElementById(`proj-replies-${updateId}`);
+  
   const toggleText = document.getElementById(`toggle-text-${updateId}`);
   const update = window.allUpdates.find(u => u.id === updateId);
   const replyCount = (update?.replies || []).length;
   
-  if (repliesDiv.style.display === 'none') {
+  if (repliesDiv && repliesDiv.style.display === 'none') {
     repliesDiv.style.display = 'block';
-    toggleText.textContent = `▲ Hide ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-  } else {
+    if (toggleText) toggleText.textContent = `▲ Hide ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+  } else if (repliesDiv) {
     repliesDiv.style.display = 'none';
-    toggleText.textContent = `▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+    if (toggleText) toggleText.textContent = `▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
   }
 }
 
 async function addReply(updateId) {
   const textEl = document.getElementById(`reply-text-${updateId}`);
-  const replyText = textEl.value.trim();
+  const replyText = textEl?.value?.trim();
   
   if (!replyText) {
     alert('Please enter a reply');
+    return;
+  }
+  
+  if (!currentUser) {
+    alert('You must be signed in to reply');
     return;
   }
   
@@ -2828,11 +2840,17 @@ async function addReply(updateId) {
     
     // Re-render updates to show new reply
     renderUpdates();
+    // Also re-render project updates if we're viewing a project
+    if (currentProjId && typeof renderProjectUpdates === 'function') {
+      renderProjectUpdates();
+    }
     
-    // Auto-expand replies to show the new one
+    // Auto-expand replies to show the new one (check both possible IDs)
     setTimeout(() => {
-      const repliesDiv = document.getElementById(`replies-${updateId}`);
+      let repliesDiv = document.getElementById(`replies-${updateId}`);
+      if (!repliesDiv) repliesDiv = document.getElementById(`proj-replies-${updateId}`);
       if (repliesDiv) repliesDiv.style.display = 'block';
+      
       const toggleText = document.getElementById(`toggle-text-${updateId}`);
       if (toggleText) toggleText.textContent = `▲ Hide ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`;
     }, 100);
@@ -2844,7 +2862,7 @@ async function addReply(updateId) {
 }
 
 async function deleteReply(updateId, replyId) {
-  if (!confirm('Delete this reply?')) return;
+  if (!confirm('Delete this reply and all its replies?')) return;
   
   try {
     const update = window.allUpdates.find(u => u.id === updateId);
@@ -2853,8 +2871,16 @@ async function deleteReply(updateId, replyId) {
       return;
     }
     
-    // Filter out the reply
-    const updatedReplies = (update.replies || []).filter(r => r.id !== replyId);
+    // Recursively remove reply from nested structure
+    const removeReply = (replies) => {
+      return replies.filter(r => {
+        if (r.id === replyId) return false; // Remove this reply
+        if (r.replies) r.replies = removeReply(r.replies); // Recurse
+        return true;
+      });
+    };
+    
+    const updatedReplies = removeReply(update.replies || []);
     
     // Update in Firestore
     const updateRef = doc(db, 'updates', updateId);
@@ -2869,12 +2895,18 @@ async function deleteReply(updateId, replyId) {
     
     // Re-render to show changes
     renderUpdates();
+    // Also re-render project updates if we're viewing a project
+    if (currentProjId && typeof renderProjectUpdates === 'function') {
+      renderProjectUpdates();
+    }
     
-    // Keep replies expanded if there are still some
+    // Keep replies expanded if there are still some (check both possible IDs)
     if (updatedReplies.length > 0) {
       setTimeout(() => {
-        const repliesDiv = document.getElementById(`replies-${updateId}`);
+        let repliesDiv = document.getElementById(`replies-${updateId}`);
+        if (!repliesDiv) repliesDiv = document.getElementById(`proj-replies-${updateId}`);
         if (repliesDiv) repliesDiv.style.display = 'block';
+        
         const toggleText = document.getElementById(`toggle-text-${updateId}`);
         if (toggleText) toggleText.textContent = `▲ Hide ${updatedReplies.length} ${updatedReplies.length === 1 ? 'reply' : 'replies'}`;
       }, 100);
@@ -2886,14 +2918,20 @@ async function deleteReply(updateId, replyId) {
   }
 }
 
-function renderReplies(replies) {
+function renderReplies(replies, updateId, depth = 0) {
   if (!replies || replies.length === 0) return '';
+  
+  // Limit depth to prevent UI from getting too narrow
+  const maxDepth = 5;
+  const indent = Math.min(depth, maxDepth) * 16;
   
   return replies.map(r => {
     const isAuthor = currentUser && r.authorUid === currentUser.uid;
+    const replyCount = (r.replies || []).length;
+    const nestedRepliesId = `nested-replies-${r.id}`;
     
     return `
-    <div style="padding:12px;background:#F9FAFB;border-radius:6px;margin-bottom:8px;">
+    <div style="padding:12px;background:#F9FAFB;border-radius:6px;margin-bottom:8px;margin-left:${indent}px;">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
         <div style="font-size:8pt;color:#6B7280;">
           <span style="font-weight:600;color:#1F2937;">${esc(r.author || 'Unknown')}</span>
@@ -2901,15 +2939,177 @@ function renderReplies(replies) {
           <span>${r.timestamp ? new Date(r.timestamp).toLocaleDateString() + ' ' + new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
         </div>
         ${isAuthor ? `
-          <button onclick="deleteReply('${r.updateId}', '${r.id}')" style="background:none;border:none;color:#EF4444;font-size:8pt;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='none'" title="Delete reply">
+          <button onclick="deleteReply('${updateId}', '${r.id}')" style="background:none;border:none;color:#EF4444;font-size:8pt;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='none'" title="Delete reply">
             🗑️ Delete
           </button>
         ` : ''}
       </div>
-      <div style="font-size:9pt;color:#1F2937;">${esc(r.text || '')}</div>
+      <div style="font-size:9pt;color:#1F2937;margin-bottom:8px;">${esc(r.text || '')}</div>
+      
+      <!-- Reply to this reply -->
+      <div style="display:flex;gap:12px;align-items:center;">
+        <button onclick="toggleNestedReplyForm('${r.id}')" style="background:none;border:none;color:#3B82F6;font-size:8pt;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='none'">
+          💬 Reply
+        </button>
+        ${replyCount > 0 ? `
+          <button onclick="toggleNestedReplies('${r.id}')" style="background:none;border:none;color:#6B7280;font-size:8pt;font-weight:600;cursor:pointer;">
+            <span id="nested-toggle-text-${r.id}">▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}</span>
+          </button>
+        ` : ''}
+      </div>
+      
+      <!-- Nested Reply Form -->
+      <div id="nested-reply-form-${r.id}" style="display:none;margin-top:12px;padding:12px;background:#fff;border:1px solid #E5E7EB;border-radius:6px;">
+        <textarea id="nested-reply-text-${r.id}" placeholder="Write a reply..." style="width:100%;min-height:60px;padding:8px;border:1px solid var(--border);border-radius:4px;font-size:9pt;font-family:var(--font);resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="addNestedReply('${updateId}', '${r.id}')" style="background:#3B82F6;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Post Reply</button>
+          <button onclick="cancelNestedReply('${r.id}')" style="background:#F3F4F6;color:#1F2937;border:none;border-radius:4px;padding:6px 12px;font-size:8pt;font-weight:600;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      
+      <!-- Nested Replies (recursive) -->
+      ${replyCount > 0 ? `
+        <div id="${nestedRepliesId}" style="display:none;margin-top:12px;">
+          ${renderReplies(r.replies || [], updateId, depth + 1)}
+        </div>
+      ` : ''}
     </div>
   `;
   }).join('');
+}
+
+function toggleNestedReplyForm(replyId) {
+  const form = document.getElementById(`nested-reply-form-${replyId}`);
+  if (form) {
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+      const textarea = document.getElementById(`nested-reply-text-${replyId}`);
+      if (textarea) textarea.focus();
+    }
+  }
+}
+
+function cancelNestedReply(replyId) {
+  const form = document.getElementById(`nested-reply-form-${replyId}`);
+  const textarea = document.getElementById(`nested-reply-text-${replyId}`);
+  if (form) form.style.display = 'none';
+  if (textarea) textarea.value = '';
+}
+
+function toggleNestedReplies(replyId) {
+  const repliesDiv = document.getElementById(`nested-replies-${replyId}`);
+  const toggleText = document.getElementById(`nested-toggle-text-${replyId}`);
+  
+  if (repliesDiv && toggleText) {
+    // Find the reply to get count
+    const reply = findReplyById(window.allUpdates, replyId);
+    const replyCount = (reply?.replies || []).length;
+    
+    if (repliesDiv.style.display === 'none') {
+      repliesDiv.style.display = 'block';
+      toggleText.textContent = `▲ Hide ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+    } else {
+      repliesDiv.style.display = 'none';
+      toggleText.textContent = `▼ Show ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+    }
+  }
+}
+
+// Helper to find a reply by ID (recursively search all updates and their replies)
+function findReplyById(updates, replyId) {
+  for (const update of updates) {
+    const reply = searchReplies(update.replies || [], replyId);
+    if (reply) return reply;
+  }
+  return null;
+}
+
+function searchReplies(replies, replyId) {
+  for (const reply of replies) {
+    if (reply.id === replyId) return reply;
+    if (reply.replies) {
+      const found = searchReplies(reply.replies, replyId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+async function addNestedReply(updateId, parentReplyId) {
+  const textarea = document.getElementById(`nested-reply-text-${parentReplyId}`);
+  const replyText = textarea?.value?.trim();
+  
+  if (!replyText) {
+    alert('Please enter a reply');
+    return;
+  }
+  
+  if (!currentUser) {
+    alert('You must be signed in to reply');
+    return;
+  }
+  
+  try {
+    // Find the update
+    const update = window.allUpdates.find(u => u.id === updateId);
+    if (!update) {
+      alert('Update not found');
+      return;
+    }
+    
+    // Create reply object
+    const newReply = {
+      id: 'reply_' + Date.now(),
+      text: replyText,
+      author: currentUser.displayName || currentUser.email,
+      authorUid: currentUser.uid,
+      authorEmail: currentUser.email,
+      timestamp: new Date().toISOString(),
+      replies: []
+    };
+    
+    // Find parent reply and add nested reply
+    const parentReply = findReplyById(window.allUpdates, parentReplyId);
+    if (!parentReply) {
+      alert('Parent reply not found');
+      return;
+    }
+    
+    if (!parentReply.replies) parentReply.replies = [];
+    parentReply.replies.push(newReply);
+    
+    // Update in Firestore
+    const updateRef = doc(db, 'updates', updateId);
+    await updateDoc(updateRef, {
+      replies: update.replies
+    });
+    
+    console.log('Nested reply added successfully');
+    
+    // Clear and hide form
+    cancelNestedReply(parentReplyId);
+    
+    // Re-render
+    renderUpdates();
+    if (currentProjId && typeof renderProjectUpdates === 'function') {
+      renderProjectUpdates();
+    }
+    
+    // Auto-expand to show new reply
+    setTimeout(() => {
+      const repliesDiv = document.getElementById(`nested-replies-${parentReplyId}`);
+      if (repliesDiv) repliesDiv.style.display = 'block';
+      const toggleText = document.getElementById(`nested-toggle-text-${parentReplyId}`);
+      if (toggleText) {
+        const count = parentReply.replies.length;
+        toggleText.textContent = `▲ Hide ${count} ${count === 1 ? 'reply' : 'replies'}`;
+      }
+    }, 100);
+    
+  } catch (error) {
+    console.error('Error adding nested reply:', error);
+    alert('Error adding nested reply: ' + error.message);
+  }
 }
 
 async function deleteUpdate(id) {
@@ -3183,8 +3383,8 @@ function renderProjectUpdates() {
       </div>
       
       <!-- Replies Section (hidden by default) -->
-      <div id="replies-${u.id}" style="display:none;margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
-        ${renderReplies(u.replies || [])}
+      <div id="${repliesId}" style="display:none;margin-top:12px;padding-left:20px;border-left:3px solid #E5E7EB;">
+        ${renderReplies(u.replies || [], u.id)}
       </div>
     </div>
   `;
